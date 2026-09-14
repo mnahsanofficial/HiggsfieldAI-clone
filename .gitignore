@@ -1,12 +1,32 @@
-# Local secrets
+# Local secrets: never committed. .env.example documents the variable names.
+.env*
+!.env.example
 .env.local
-.env*.local
 
 # Per-user Claude Code overrides (shared hooks live in .claude/settings.json)
 .claude/settings.local.json
 
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+
+# next.js
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# vercel
+.vercel
+
+# debug
+npm-debug.log*
+
 # OS
 .DS_Store
+*.pem
 
 # Python bytecode
 __pycache__/
