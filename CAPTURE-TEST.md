@@ -167,12 +167,20 @@ Partial assistant text produced before the error: (none)
 
 ## Known defects
 
-- **`model: unknown` on the first prompt of a new session.** Session
-  `af7b7994`, PROMPT 1. `UserPromptSubmit` stdin has no model field. On the
-  first prompt no assistant message exists to read one from, and the desktop
-  app's `SessionStart` payload did not supply `model`. The `RESPONSE` entry
-  and the front matter show the correct model. The entry stays as written.
-  A fix goes in its own `fix/` branch.
+- **`model: unknown` on the first prompt of a new session. Fixed forward in
+  `fix/first-prompt-model`.** Session `af7b7994`, PROMPT 1, and the CLI
+  attempt `290f5dad`, PROMPT 1. `UserPromptSubmit` stdin has no model field.
+  On the first prompt no assistant message exists to read one from, and the
+  desktop app's `SessionStart` payload did not supply `model`. The `RESPONSE`
+  entry and the front matter show the correct model.
+
+  The script now also reads the `model` attachment
+  (`attachment.identity.modelId`) that Claude Code writes to the transcript
+  in the same batch as the first prompt. If that batch has not reached the
+  file, it polls for up to 1s, then falls back to the desktop app's session
+  metadata (`cliSessionId` matched to `model`). It writes `unknown` only if
+  every source is missing. Entries written before the fix keep their
+  `unknown`; they are not edited.
 
 ## Fragile points to watch during the build
 
