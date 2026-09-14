@@ -11,7 +11,9 @@ function createPool() {
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
-  return new Pool({ connectionString, max: 5 });
+  // pg treats sslmode=require as verify-full today and warns that this changes in v9;
+  // state verify-full explicitly so behaviour stays the same after upgrading.
+  return new Pool({ connectionString: connectionString.replace("sslmode=require", "sslmode=verify-full"), max: 5 });
 }
 
 export const pool = globalForDb.pgPool ?? createPool();
