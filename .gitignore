@@ -1,6 +1,7 @@
 # Local secrets: never committed. .env.example documents the variable names.
 .env*
 !.env.example
+.env.local
 
 # Per-user Claude Code overrides (shared hooks live in .claude/settings.json)
 .claude/settings.local.json
