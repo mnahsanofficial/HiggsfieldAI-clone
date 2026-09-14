@@ -9,6 +9,10 @@ navigation, the three create surfaces, pricing and the MCP surface are all docum
 The generation loop itself is not — see "Gaps". Nothing below is inferred; if it isn't in
 a capture it's in Gaps.
 
+**Corrected 15 Sep 2026 against the captures.** These notes are derived from the
+screenshots and PDFs in this folder; where the two disagreed, the capture wins and the
+text below was changed to match. Each correction is marked *(corrected)*.
+
 ---
 
 ## 1. What the product is
@@ -52,17 +56,28 @@ generated media with a "View all" pill:
   Soul / Platform / Resources / Company / Community
 
 The repeating unit is **section title + one-line subtitle + media grid + View-all pill**,
-reused about ten times with different data.
+used for eight sections (Visual Effects, Genjutsu, Seedance 2.5, GPT Image 2, Marketing
+Studio, Seedance 2.0, Soul Cinema, Soul 2.0). Alongside it are two other unit types: four
+full-width **banners** (MCP with GPT-6 Astra, Supercomputer, One Canvas, Photodump) and
+one **community project grid** *(corrected: previously "reused about ten times")*.
 
 ### Landing vs Explore, signed in (`22` compared with `19`)
-The two full-page captures are **near-identical**. Signed in, the page gains the countdown
-bar and swaps exactly one card: the "Sign up and get your extra discount" block becomes
-"UNLIMITED NANO BANANA PRO WITH PERSONAL 54% OFF" with a live discount timer. Genjutsu's
-CTA changes from "Start generating" to "Try free / Learn more". Everything else is the
-same content in the same order.
+The two full-page captures are **near-identical**: same sections in the same order, and
+pages 2–5 differ only in video frames. The differences are all at the top of the page
+*(corrected: previously "swaps exactly one card; everything else is the same")*:
 
-**Implication for the build: one page component, one auth-conditional slot.** Signed-out
-and signed-in Explore are not two pages.
+1. **Top strip is replaced, not added.** Signed out: "Get an additional discount on premium
+   plans after signing up" + "Get your discount". Signed in: countdown + "Nano Banana Pro &
+   2 UNLIMITED on Max… Personal 54% OFF" + "Get Unlimited with 54% OFF".
+2. **Header right-hand cluster.** Signed out: Login, Sign up. Signed in: search, Assets,
+   notifications bell, avatar.
+3. **Discount card.** "Sign up and get your extra discount" becomes "UNLIMITED NANO BANANA
+   PRO WITH PERSONAL 54% OFF" with a live discount timer.
+4. **Genjutsu quick-link badge.** `NEW` signed out, `FREE` signed in.
+5. **Genjutsu section CTA.** "Start generating" becomes "Try free"; "Learn more" stays.
+
+**Implication for the build: one page component, five auth-conditional slots.**
+Signed-out and signed-in Explore are not two pages.
 
 ### Signup (`01`, `02`)
 Modal, not a page. "Welcome to Higgsfield / Sign up and generate for free". Google, Apple,
@@ -129,14 +144,17 @@ Model is a URL parameter: `/ai/image?model=gpt_image_2`, `/ai/video?model=seedan
 **Image** (`/ai/image?model=gpt_image_2`) puts everything in a floating bottom composer:
 `+` attach · "Describe the scene you imagine" · model chip · aspect (Auto) · quality (High)
 · resolution (2K) · a second Auto · batch stepper `− 1/4 +` · **Generate** showing a live
-credit cost (6.5). Empty state above: a fan of sample images, "START CREATING WITH
-HIGGSFIELD SOUL CINEMA", one instruction line.
+credit cost as a credit glyph, the original cost struck through (8.5) and the discounted
+cost (6.5) *(corrected: the struck-through original was not recorded)*. Empty state
+above: a fan of sample images, "START CREATING WITH HIGGSFIELD SOUL CINEMA", one
+instruction line.
 
 **Video** (`/ai/video?model=seedance_2_5`) uses a left sidebar instead:
 tabs Create Video / Edit Video / Motion Control → preset card ("GENERAL", Seedance 2.5, with
 **Change**) → References / Extend Video toggle → "Add references: Image, Video or Audio" →
 prompt textarea with `@Elements` and a sound toggle → Model row → chips `5s`, `16:9`,
-`1080p` → Bitrate High → **Generate ৳45**.
+`1080p` → Bitrate High → **Generate** with the credit glyph, 80 struck through, 45 shown
+*(corrected: previously "Generate ৳45"; the glyph is the credit icon, not a currency)*.
 Main pane: History / How it works tabs, "MAKE VIDEOS IN ONE CLICK — 250+ presets for camera
 control, framing, and high-quality VFX", then a three-step explainer:
 **ADD IMAGE → CHOOSE PRESET → GET VIDEO.**
@@ -144,11 +162,13 @@ control, framing, and high-quality VFX", then a three-step explainer:
 **Audio** (`/audio`) mirrors the video layout: tabs Text to Speech / Voice Change /
 Translate → Upload media (up to 3 voices/audios or image) → Script textarea (`@` to
 reference attachments) → Model → Batch size → Voice details (0/500) → Advanced settings →
-Generate. Main pane has History / How it works and a Filters control.
+Generate. The Generate button shows **no credit cost** in this capture, with the script
+empty, and is rendered dimmed. Main pane has History / How it works and a Filters control.
 
 **Pattern across all three:** a params panel on one side, a History tab in the main pane, a
-batch size, a model selector, and a Generate button that prices itself in credits before
-you press it.
+batch size, a model selector, and a Generate button. Image and Video price the button in
+credits before you press it, even with nothing entered; Audio's capture shows no price
+*(corrected: previously stated for all three)*.
 
 ### MCP / plugin page (`21`)
 A standalone marketing-plus-setup page, and the most 8x-relevant surface in the product.
@@ -213,12 +233,20 @@ deliberately quieter than the CTAs.
 "UPGRADE PLAN TO BUY CREDITS / Choose a higher plan for increased limits and credits
 top-up". Same promocode and countdown. Adds two tiers either side of the pair above:
 
-- **BASIC** — $9/mo billed annually, 120 credits/mo (= 60 NBP generations, ~2 Seedance 2.0
-  fast videos), "Fixed amount of 120 credits/mo", CTA "Get Basic", note "No difference
-  compared to monthly". Its Unlimited & Free Gens block is greyed out entirely, and it
-  carries an explicit **"NO ACCESS TO SEEDANCE 2.5 — Available from Pro plan"** panel.
+- **BASIC** — "For first-time AI creators", $9/mo billed annually, 120 credits/mo (= 60 NBP
+  generations, ~7 Seedance 2.0 Fast videos *(corrected: previously "~2")*), "Fixed amount
+  of 120 credits/mo", CTA "Get Basic", note "No difference compared to monthly". Its
+  Unlimited & Free Gens block is greyed out entirely, and it carries an explicit **"NO
+  ACCESS TO SEEDANCE 2.5 — Available from Pro plan"** panel listing Seedance 2.5 and
+  Seedance 2.0 as "No access". Its checklist nevertheless says "Parallel generations: up
+  to 2 Videos, 2 Images" and "Access to Seedance 2.0 Fast & 2.0 Mini". That is an
+  inconsistency inside the product, not in these notes: Fast and Mini are treated as
+  models separate from Seedance 2.0, each with its own tier gate.
+- In this modal the Pro and Max CTAs read "Get Pro" and "Get Max" (the post-onboarding
+  offer modal uses "Select Offer").
 - **FOR TEAMS** `54% OFF` `BEST VALUE` — from $45/seat/mo billed annually, shared workspaces
-  and credits, from 4 seats, starting from 1,000 credits per seat per month, CTA "Explore
+  and credits, from 2 seats per workspace *(corrected: previously "from 4 seats")*,
+  unlimited credits/mo pooled, starting from 1,000 credits per seat per month, CTA "Explore
   Plans". Extra sections: Workspace & Collaboration (shareable elements and Soul ID, shared
   workspace & projects with integrated chats, custom credits amount, unlimited members,
   admin control), Security & Compliance (SOC 2, custom SSO, retain rights to use/edit/publish
@@ -245,12 +273,14 @@ unlimited usage may be speed-adjusted during high traffic; new models roll out g
 ## 4. Things that shape the build
 
 - Credit cost is shown **on the button, before you commit**, and moves with the config.
+  It is shown as a struck-through original cost next to the discounted cost *(corrected)*.
 - **Presets are the differentiator.** "250+ presets for camera control" plus ADD IMAGE →
   CHOOSE PRESET → GET VIDEO says the product sells *direction*, not raw generation.
 - **History lives next to creation**, as a tab in the same pane.
 - **Nothing is ever empty.** Every surface is dense with generated media on first load.
 - **Model is a URL parameter** — the create page is one component parameterised by model.
-- Signed-in and signed-out Explore differ by one card.
+- Signed-in and signed-out Explore differ in five auth-conditional slots *(corrected:
+  previously "one card")*.
 - **`@` references** appear in both the video prompt and the audio script — a mention system
   for pulling in attached assets.
 - The MCP page's skills gallery (category sidebar + card grid + duration + type badge) is a
