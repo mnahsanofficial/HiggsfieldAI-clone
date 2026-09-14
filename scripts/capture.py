@@ -48,6 +48,7 @@ AUTHOR = "mnahsanofficial"
 PROJECT = "higgsfieldai-clone"
 TOOL = "claude-code"
 TRANSCRIPT_WAIT_SECONDS = 2.0
+PROMPT_MODEL_WAIT_SECONDS = 1.0
 
 FM_KEYS = [
     "session_id", "date", "author", "model", "tool", "project",
@@ -111,12 +112,64 @@ def read_transcript(path):
 
 
 def last_model_in(entries):
+    """Most recent model named in the transcript.
+
+    Assistant entries carry `message.model`. Before the first reply there are
+    none, but Claude Code writes a `model` attachment
+    (`attachment.identity.modelId`) in the same batch as the first prompt.
+    """
     for e in reversed(entries):
-        if e.get("type") == "assistant" and not e.get("isSidechain"):
+        if e.get("isSidechain"):
+            continue
+        if e.get("type") == "assistant":
             model = (e.get("message") or {}).get("model")
             if model and model != "<synthetic>":
                 return model
+        attachment = e.get("attachment")
+        if isinstance(attachment, dict) and attachment.get("type") == "model":
+            model = (attachment.get("identity") or {}).get("modelId")
+            if model:
+                return model
     return None
+
+
+def desktop_session_model(session_id):
+    """Model the Claude desktop app recorded for this session, if any.
+
+    The app keeps one JSON file per Code session, named by the host session id
+    it also exports as CLAUDE_CODE_HOST_SESSION_ID, with `cliSessionId` and
+    `model` fields. Not a documented contract, so it is only a fallback.
+    """
+    host_id = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID")
+    if not host_id:
+        return None
+    root = os.path.expanduser("~/Library/Application Support/Claude/claude-code-sessions")
+    for path in glob.glob(os.path.join(glob.escape(root), "*", "*", glob.escape(host_id) + ".json")):
+        try:
+            with open(path) as f:
+                meta = json.load(f)
+        except (OSError, ValueError):
+            continue
+        if meta.get("cliSessionId") == session_id and meta.get("model"):
+            return meta["model"]
+    return None
+
+
+def prompt_model(data, session_id):
+    """Model for a PROMPT entry, which has no model field on stdin."""
+    model = load_state(session_id).get("model")
+    if model:
+        return model
+    path, prompt_id = data.get("transcript_path"), data.get("prompt_id")
+    deadline = time.time() + PROMPT_MODEL_WAIT_SECONDS
+    while True:
+        entries = read_transcript(path)
+        model = last_model_in(entries)
+        flushed = prompt_id and any(e.get("promptId") == prompt_id for e in entries)
+        if model or not prompt_id or flushed or time.time() >= deadline:
+            break
+        time.sleep(0.05)  # this prompt's batch has not reached the file yet
+    return model or desktop_session_model(session_id) or os.environ.get("ANTHROPIC_MODEL") or "unknown"
 
 
 def final_response_in(entries):
@@ -331,10 +384,7 @@ def on_prompt(data, session_id):
     if prompt is None:
         raise ValueError("UserPromptSubmit stdin has no `prompt` field")
     ts = utc_now()
-    model = (load_state(session_id).get("model")
-             or last_model_in(read_transcript(data.get("transcript_path")))
-             or os.environ.get("ANTHROPIC_MODEL")
-             or "unknown")
+    model = prompt_model(data, session_id)
 
     def make(fm, body):
         closed = close_unanswered(data, session_id, fm, body, data.get("prompt_id"))
