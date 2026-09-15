@@ -2,7 +2,7 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/paywall` merge (the ship script confirms production serves the merge SHA).
+**Production:** https://higgsfield-ai-clone.vercel.app: green, serving the `feat/explore` merge (`2ed9f13`). **`feat/paywall` (PR #15) is NOT merged: every new Vercel build fails, see Waiting on the owner.** (the ship script confirms production serves the merge SHA).
 
 **Works end to end now:**
 - **Image:** a stranger opens `/ai/image`, prompt → Generate → a real FLUX.1 schnell image in History, credits 100 → 98 (checkpoint passed on production).
@@ -24,12 +24,18 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 6 | `feat/create-video-presets` | done (PR #12) |
 | 7 | `feat/assets-library` | done (PR #13) |
 | 8 | `feat/explore` | done (PR #14) |
-| 9 | `feat/paywall` | done |
+| 9 | `feat/paywall` | built and verified locally; PR #15 open, **blocked on Vercel builds** |
 | 10 | `fix/mobile-pass` | **next** |
 | 11 | README | todo |
 
 ## Waiting on the owner
-Nothing.
+**Vercel builds fail for the project with `BUILD_FAILED: Resource provisioning failed`, before any build step runs.**
+- Seen on 2026-09-15 around 05:31–05:40 UTC: two GitHub-triggered previews for PR #15, plus a direct `vercel deploy` from the CLI.
+- Production (`2ed9f13`) still serves. The project isn't paused. The Vercel status page shows no incident. There were 31 deployments in 24h.
+- The same commit passes `npm run build`, `tsc` and `lint` locally.
+- **Likely an account-level Hobby limit or fair-use throttle on builds.** The ffmpeg render tests used real function CPU earlier.
+- **Please check:** Vercel dashboard → Usage (build minutes, active CPU, fair-use notices) and the failed deployment's page. Retry, or tell me what it says.
+- **Resume:** re-run `scripts/dev/ship.sh feat/paywall "Paywall: upgrade on 402, outcome-priced plans, labelled demo purchase" <body.md>`. The PR already exists; the body is in the PR, so re-save it to a file. Then run `node scripts/dev/ui-paywall-e2e.mjs https://higgsfield-ai-clone.vercel.app "" --mobile`.
 
 ## Next action
 Branch `fix/mobile-pass` from `main`: one audit at 390px across every shipped surface, on production:
