@@ -12,6 +12,8 @@ export type StudioModel = {
 export type JobAsset = {
   id: string;
   url: string;
+  posterUrl?: string | null;
+  durationMs?: number | null;
   width: number;
   height: number;
   kind: "image" | "video";
@@ -27,6 +29,7 @@ export type JobDTO = {
   prompt: string;
   modelId: string;
   modelName: string;
+  presetId?: string | null;
   params: { aspect: string; resolution: string; batchSize: number; durationS?: number };
   costTenths: number;
   errorCode: string | null;
@@ -37,3 +40,14 @@ export type JobDTO = {
 };
 
 export const isActive = (j: JobDTO) => j.status === "queued" || j.status === "processing";
+
+export type StudioPreset = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  featured: boolean;
+  preview: { url: string; posterUrl: string | null } | null;
+};
+
+export type PickerImage = { id: string; url: string; width: number; height: number; prompt: string | null };

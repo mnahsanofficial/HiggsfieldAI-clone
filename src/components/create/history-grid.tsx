@@ -43,7 +43,7 @@ function JobTiles({ job, onOpen, onCancel, onRetry, busy }: { job: JobDTO; busy:
                 <div className="h-full rounded-full bg-accent transition-[width] duration-700" style={{ width: `${Math.max(job.progress, 8)}%` }} />
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-white/70">{job.status === "queued" ? "Queued" : "Generating"} · {job.progress}%</span>
+                <span className="text-white/70">{job.status === "queued" ? "Queued" : job.vertical === "video" ? "Rendering" : "Generating"} · {job.progress}%</span>
                 {i === 0 && (
                   <button
                     type="button"
@@ -107,6 +107,7 @@ function JobTiles({ job, onOpen, onCancel, onRetry, busy }: { job: JobDTO; busy:
 }
 
 function AssetTile({ asset, job, onOpen }: { asset: JobAsset; job: JobDTO; onOpen: Props["onOpen"] }) {
+  const isVideo = asset.kind === "video";
   return (
     <button
       type="button"
@@ -114,10 +115,30 @@ function AssetTile({ asset, job, onOpen }: { asset: JobAsset; job: JobDTO; onOpe
       className="group relative mb-2 block w-full break-inside-avoid overflow-hidden rounded-xl bg-white/5 text-left"
       style={{ aspectRatio: `${asset.width} / ${asset.height}` }}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route, sizes vary per asset */}
-      <img src={asset.url} alt={asset.prompt ?? job.prompt} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+      {isVideo ? (
+        <video
+          src={asset.url}
+          poster={asset.posterUrl ?? undefined}
+          muted
+          loop
+          playsInline
+          preload="none"
+          onMouseEnter={(e) => void e.currentTarget.play().catch(() => {})}
+          onMouseLeave={(e) => e.currentTarget.pause()}
+          className="h-full w-full object-cover"
+          aria-label={asset.prompt ?? job.prompt}
+        />
+      ) : (
+        // eslint-disable-next-line @next/next/no-img-element -- immutable /media route, sizes vary per asset
+        <img src={asset.url} alt={asset.prompt ?? job.prompt} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+      )}
       {asset.source === "sample" && (
         <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Sample</span>
+      )}
+      {isVideo && (
+        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur">
+          ▶ {Math.round((asset.durationMs ?? 0) / 1000)}s · Rendered
+        </span>
       )}
       <span className="pointer-events-none absolute inset-x-0 bottom-0 line-clamp-2 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6 text-xs text-white/85 opacity-0 transition group-hover:opacity-100">
         {asset.prompt ?? job.prompt}

@@ -9,6 +9,7 @@ import { CreditGlyph } from "./credits/credit-glyph";
 const NAV: { href: string; label: string }[] = [
   { href: "/", label: "Explore" },
   { href: "/ai/image", label: "Image" },
+  { href: "/ai/video", label: "Video" },
 ];
 
 export async function AppHeader() {
@@ -22,9 +23,9 @@ export async function AppHeader() {
           <span className="hidden sm:inline">HIGGSFIELD<span className="text-accent"> CLONE</span></span>
         </Link>
 
-        <nav className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto text-sm text-white/60 [scrollbar-width:none]">
+        <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm text-white/60 [scrollbar-width:none] sm:gap-1">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-lg px-2.5 py-1.5 hover:text-white">
+            <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-lg px-2 py-1.5 hover:text-white sm:px-2.5">
               {item.label}
             </Link>
           ))}
@@ -41,7 +42,9 @@ export async function AppHeader() {
               {formatCredits(user.creditBalanceTenths)}
             </Link>
             {user.kind === "guest" ? (
-              <Link href="/signup" className="flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-black">
+              // Hidden on phones to keep the nav unclipped; the balance chip leads to /credits,
+              // which carries the guest sign-up call to action.
+              <Link href="/signup" className="hidden h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-black sm:flex">
                 Sign up
               </Link>
             ) : (
@@ -54,7 +57,7 @@ export async function AppHeader() {
           </div>
         ) : (
           <div className="flex shrink-0 items-center gap-2">
-            <Link href="/login" className="flex h-9 items-center rounded-lg px-3 text-sm text-white/70 hover:text-white">
+            <Link href="/login" className="hidden h-9 items-center rounded-lg px-3 text-sm text-white/70 hover:text-white sm:flex">
               Login
             </Link>
             <Link href="/signup" className="flex h-9 items-center rounded-lg bg-accent px-3 text-sm font-semibold text-black">
