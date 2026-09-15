@@ -2,17 +2,19 @@ import { after, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { InsufficientCreditsError } from "@/lib/credits/ledger";
 import { balanceOf, JobInputError, listJobs, retryJob, runImageJob } from "@/lib/jobs/service";
+import { runVideoJob } from "@/lib/jobs/video";
 
 export const maxDuration = 300;
 
 // A retry is a new job with the same settings, charged again (the failed one was refunded).
 export async function POST(_request: Request, { params }: RouteContext<"/api/jobs/[id]/retry">) {
+  const invokedAt = Date.now();
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const { id } = await params;
   try {
-    const { jobId } = await retryJob(user.id, id);
-    after(() => runImageJob(jobId));
+    const { jobId, vertical } = await retryJob(user.id, id);
+    after(() => (vertical === "video" ? runVideoJob(jobId, invokedAt) : runImageJob(jobId)));
     const [job] = await listJobs(user.id, { ids: [jobId] });
     return NextResponse.json({ job, balanceTenths: await balanceOf(user.id) }, { status: 201 });
   } catch (err) {
