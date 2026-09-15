@@ -45,9 +45,12 @@ export type StudioPreset = {
   id: string;
   name: string;
   category: string;
+  motionType: string;
   description: string;
   featured: boolean;
   preview: { url: string; posterUrl: string | null } | null;
 };
 
 export type PickerImage = { id: string; url: string; width: number; height: number; prompt: string | null };
+
+export type RenderPolicy = { mode: "live" | "prerendered"; liveRendersLeft: number; prerenderOnlyMotions: string[] };

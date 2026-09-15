@@ -49,6 +49,9 @@ export function PresetGrid({ presets, selectedId, onSelect }: { presets: StudioP
                 <video src={p.preview.url} poster={p.preview.posterUrl ?? undefined} muted loop playsInline autoPlay preload="metadata" className="h-full w-full object-cover" />
               )}
               {selectedId === p.id && <span className="absolute right-2 top-2 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-black">SELECTED</span>}
+              {(p.motionType === "arc" || p.motionType === "rack_focus") && (
+                <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-black">PRE-RENDERED</span>
+              )}
             </div>
             <div className="p-2.5">
               <p className="text-sm font-semibold uppercase tracking-tight">{p.name}</p>

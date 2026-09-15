@@ -132,13 +132,16 @@ function AssetTile({ asset, job, onOpen }: { asset: JobAsset; job: JobDTO; onOpe
         // eslint-disable-next-line @next/next/no-img-element -- immutable /media route, sizes vary per asset
         <img src={asset.url} alt={asset.prompt ?? job.prompt} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
       )}
-      {asset.source === "sample" && (
-        <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Sample</span>
-      )}
-      {isVideo && (
-        <span className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur">
-          ▶ {Math.round((asset.durationMs ?? 0) / 1000)}s · Rendered
+      {asset.source === "sample" ? (
+        <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">
+          {isVideo ? `▶ ${Math.round((asset.durationMs ?? 0) / 1000)}s · Pre-rendered example` : "Sample"}
         </span>
+      ) : (
+        isVideo && (
+          <span className="absolute left-2 top-2 flex items-center gap-1 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/90 backdrop-blur">
+            ▶ {Math.round((asset.durationMs ?? 0) / 1000)}s · Rendered
+          </span>
+        )
       )}
       <span className="pointer-events-none absolute inset-x-0 bottom-0 line-clamp-2 bg-gradient-to-t from-black/80 to-transparent p-2 pt-6 text-xs text-white/85 opacity-0 transition group-hover:opacity-100">
         {asset.prompt ?? job.prompt}
