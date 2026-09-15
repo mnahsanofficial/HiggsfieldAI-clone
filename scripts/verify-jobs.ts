@@ -84,7 +84,10 @@ async function main() {
     const cAssets = await db.select().from(S.assets).where(eq(S.assets.jobId, c.jobId));
     check("quota: job failed with quota_exhausted", jc.status === "failed" && jc.errorCode === "quota_exhausted");
     check("quota: refunded (net zero)", (await balance(u)) === beforeQuota);
-    check("quota: sample attached, labelled sample, with the sample's own prompt", cAssets.length === 1 && cAssets[0].source === "sample" && cAssets[0].prompt === "sample prompt");
+    // Samples are drawn at random from all public model outputs (the seed library included), so
+    // check the attached one against its source asset rather than expecting our test asset.
+    const [src] = cAssets[0] ? await db.select({ prompt: S.assets.prompt }).from(S.assets).where(and(eq(S.assets.url, cAssets[0].url), eq(S.assets.isPublic, true))).limit(1) : [];
+    check("quota: sample attached, labelled sample, with the sample's own prompt", cAssets.length === 1 && cAssets[0].source === "sample" && !!src && cAssets[0].prompt === src.prompt && cAssets[0].prompt !== `${prompt} quota`, cAssets[0]?.prompt ?? "no sample");
     const [{ qe }] = await db.select({ qe: sql<number>`count(*)::int` }).from(S.systemEvents).where(and(eq(S.systemEvents.kind, "provider_quota_exhausted"), sql`detail->>'jobId' = ${c.jobId}`));
     check("quota: logged to system_events", qe === 1);
 
@@ -103,9 +106,19 @@ async function main() {
 
     // 6. Cancel mid-processing: slow provider, cancel while it runs, outputs discarded.
     const f = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} cancel-processing`, aspect: "1:1", resolution: "1K", batchSize: 1 });
-    const slow = { key: "test-slow", generate: async () => { await new Promise((r) => setTimeout(r, 1500)); throw new ProviderError("provider_error", "should be ignored"); } };
+    // The provider fails only after the cancel has committed, whatever the DB latency, so this
+    // always exercises "worker failure arrives after cancel" rather than racing a timer.
+    let providerCalled = false;
+    const slow = {
+      key: "test-slow",
+      generate: async () => {
+        providerCalled = true;
+        for (let i = 0; i < 200 && (await job(f.jobId)).status !== "canceled"; i++) await new Promise((r) => setTimeout(r, 100));
+        throw new ProviderError("provider_error", "should be ignored");
+      },
+    };
     const running = jobs.runImageJob(f.jobId, { provider: slow });
-    await new Promise((r) => setTimeout(r, 400));
+    for (let i = 0; i < 300 && !providerCalled; i++) await new Promise((r) => setTimeout(r, 50));
     check("cancel while processing -> canceled", await jobs.cancelJob(u, f.jobId));
     await running;
     const jf = await job(f.jobId);
