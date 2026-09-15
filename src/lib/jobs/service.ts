@@ -169,7 +169,7 @@ export async function runImageJob(jobId: string, opts: RunOptions = {}): Promise
   }
 }
 
-async function stillProcessing(jobId: string): Promise<boolean> {
+export async function stillProcessing(jobId: string): Promise<boolean> {
   const [row] = await db.select({ status: generationJobs.status }).from(generationJobs).where(eq(generationJobs.id, jobId));
   return row?.status === "processing";
 }
@@ -225,14 +225,28 @@ export async function cancelJob(userId: string, jobId: string): Promise<boolean>
   });
 }
 
-export async function retryJob(userId: string, jobId: string) {
+export async function retryJob(userId: string, jobId: string): Promise<{ jobId: string; vertical: "image" | "video" }> {
   const [old] = await db
     .select()
     .from(generationJobs)
     .where(and(eq(generationJobs.id, jobId), eq(generationJobs.userId, userId)));
   if (!old) throw new JobInputError("Job not found.", 404, "not_found");
   if (old.status !== "failed" && old.status !== "canceled") throw new JobInputError("Only failed or canceled jobs can be retried.");
-  return submitImageJob(userId, { modelId: old.modelId, prompt: old.prompt, ...old.params, retryOfJobId: old.id });
+  if (old.vertical === "video") {
+    const { submitVideoJob } = await import("./video");
+    const r = await submitVideoJob(userId, {
+      modelId: old.modelId,
+      presetId: old.presetId ?? "",
+      inputAssetId: old.inputAssetId ?? "",
+      aspect: old.params.aspect,
+      resolution: old.params.resolution,
+      durationS: old.params.durationS ?? 5,
+      retryOfJobId: old.id,
+    });
+    return { jobId: r.jobId, vertical: "video" };
+  }
+  const r = await submitImageJob(userId, { modelId: old.modelId, prompt: old.prompt, ...old.params, retryOfJobId: old.id });
+  return { jobId: r.jobId, vertical: "image" };
 }
 
 // Fails and refunds jobs whose worker vanished (function killed, deploy, crash).
@@ -272,6 +286,7 @@ export async function listJobs(userId: string, opts: { vertical?: "image" | "vid
       prompt: generationJobs.prompt,
       modelId: generationJobs.modelId,
       modelName: models.name,
+      presetId: generationJobs.presetId,
       params: generationJobs.params,
       costTenths: generationJobs.costTenths,
       errorCode: generationJobs.errorCode,
@@ -286,7 +301,7 @@ export async function listJobs(userId: string, opts: { vertical?: "image" | "vid
     .limit(opts.limit ?? 40);
   const jobAssets = jobs.length
     ? await db
-        .select({ id: assets.id, jobId: assets.jobId, url: assets.url, width: assets.width, height: assets.height, kind: assets.kind, source: assets.source, prompt: assets.prompt })
+        .select({ id: assets.id, jobId: assets.jobId, url: assets.url, posterUrl: assets.posterUrl, width: assets.width, height: assets.height, durationMs: assets.durationMs, kind: assets.kind, source: assets.source, prompt: assets.prompt })
         .from(assets)
         .where(and(inArray(assets.jobId, jobs.map((j) => j.id)), sql`${assets.deletedAt} IS NULL`))
     : [];
