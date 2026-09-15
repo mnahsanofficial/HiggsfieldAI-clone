@@ -12,6 +12,7 @@ import { useJobs } from "./use-jobs";
 type Props = {
   models: StudioModel[];
   initialModelId: string;
+  initialPrompt?: string;
   initialJobs: JobDTO[];
   signedIn: boolean;
   showcase: { url: string; prompt: string | null }[];
@@ -19,11 +20,11 @@ type Props = {
 
 type ApiError = { error?: string; message?: string; requiredTenths?: number; balanceTenths?: number };
 
-export function ImageStudio({ models, initialModelId, initialJobs, signedIn: initiallySignedIn, showcase }: Props) {
+export function ImageStudio({ models, initialModelId, initialPrompt = "", initialJobs, signedIn: initiallySignedIn, showcase }: Props) {
   const router = useRouter();
   const [signedIn, setSignedIn] = useState(initiallySignedIn);
   const { jobs, upsert, refresh } = useJobs("image", initialJobs, signedIn);
-  const [composer, setComposer] = useState<ComposerState>({ prompt: "", modelId: initialModelId, aspect: "1:1", batchSize: 1 });
+  const [composer, setComposer] = useState<ComposerState>({ prompt: initialPrompt, modelId: initialModelId, aspect: "1:1", batchSize: 1 });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ message: string; outOfCredits?: boolean } | null>(null);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);

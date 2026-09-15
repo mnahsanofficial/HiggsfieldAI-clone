@@ -1,19 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { JobAsset, JobDTO } from "./types";
 
 type Props = {
-  job: JobDTO;
+  job: Pick<JobDTO, "prompt" | "modelName"> & { params: { aspect: string } };
   asset: JobAsset;
   onClose: () => void;
+  // In a studio, reuse fills the composer in place; elsewhere it links to the image studio.
   onReuse?: (prompt: string) => void;
+  onDelete?: () => Promise<void>;
+  isExample?: boolean;
 };
 
 // Result view (not observed in the recon, so an assumption): the full image or video, what
 // made it and how (generated vs rendered vs sample), download, and the next step.
-export function Lightbox({ job, asset, onClose, onReuse }: Props) {
+export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: Props) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
@@ -63,6 +68,7 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
               <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-bold text-black">MODEL GENERATED</span>
             )}
             {cropped && !isSample && <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/70">Centre-cropped to {job.params.aspect}</span>}
+            {isExample && <span className="rounded-md bg-white/10 px-2 py-0.5 text-xs text-white/70">Example from the library</span>}
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="-mr-1 -mt-1 grid h-9 w-9 shrink-0 place-items-center rounded-lg text-xl text-white/60 hover:bg-white/10 hover:text-white">
             ×
@@ -99,19 +105,39 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
               Animate
             </Link>
           )}
-          {onReuse && !isVideo && (
-            <button
-              type="button"
-              onClick={() => {
-                onReuse(prompt);
-                onClose();
-              }}
-              className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-black"
-            >
-              Reuse
-            </button>
-          )}
+          {!isVideo && !isSample &&
+            (onReuse ? (
+              <button
+                type="button"
+                onClick={() => {
+                  onReuse(prompt);
+                  onClose();
+                }}
+                className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-black"
+              >
+                Reuse
+              </button>
+            ) : (
+              <Link href={`/ai/image?prompt=${encodeURIComponent(prompt)}`} className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-black">
+                Reuse
+              </Link>
+            ))}
         </div>
+        {onDelete && (
+          <button
+            type="button"
+            disabled={deleting}
+            onClick={async () => {
+              if (!confirmDelete) return setConfirmDelete(true);
+              setDeleting(true);
+              await onDelete();
+              onClose();
+            }}
+            className={`h-10 rounded-xl text-sm ${confirmDelete ? "bg-red-500/90 font-semibold text-white" : "text-white/45 hover:bg-white/5 hover:text-red-300"}`}
+          >
+            {deleting ? "Deleting…" : confirmDelete ? "Tap again to delete" : "Delete"}
+          </button>
+        )}
       </aside>
     </div>
   );

@@ -6,10 +6,12 @@ import { CreditGlyph } from "./credits/credit-glyph";
 
 // Only routes that exist are listed; items are added as their surfaces ship, so the nav
 // never contains a dead link.
-const NAV: { href: string; label: string }[] = [
-  { href: "/", label: "Explore" },
+const NAV: { href: string; label: string; desktopOnly?: boolean }[] = [
+  // On phones the logo already goes home, so Explore makes room for the rest.
+  { href: "/", label: "Explore", desktopOnly: true },
   { href: "/ai/image", label: "Image" },
   { href: "/ai/video", label: "Video" },
+  { href: "/assets", label: "Assets" },
 ];
 
 export async function AppHeader() {
@@ -25,7 +27,7 @@ export async function AppHeader() {
 
         <nav className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto text-sm text-white/60 [scrollbar-width:none] sm:gap-1">
           {NAV.map((item) => (
-            <Link key={item.href} href={item.href} className="whitespace-nowrap rounded-lg px-2 py-1.5 hover:text-white sm:px-2.5">
+            <Link key={item.href} href={item.href} className={`whitespace-nowrap rounded-lg px-2 py-1.5 hover:text-white sm:px-2.5 ${item.desktopOnly ? "hidden sm:block" : ""}`}>
               {item.label}
             </Link>
           ))}

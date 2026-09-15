@@ -11,7 +11,7 @@ export const metadata = { title: "Create Image · Higgsfield clone" };
 
 // Model is a URL parameter, one page component parameterised by model (recon §2, 16).
 export default async function CreateImagePage({ searchParams }: PageProps<"/ai/image">) {
-  const { model: requested } = await searchParams;
+  const { model: requested, prompt: promptParam } = await searchParams;
   const [user, imageModels] = await Promise.all([
     getCurrentUser(),
     db
@@ -37,6 +37,7 @@ export default async function CreateImagePage({ searchParams }: PageProps<"/ai/i
     <ImageStudio
       models={studioModels}
       initialModelId={initialModelId}
+      initialPrompt={typeof promptParam === "string" ? promptParam.slice(0, 2000) : ""}
       initialJobs={initialJobs}
       signedIn={!!user}
       showcase={showcase.filter((s): s is NonNullable<typeof s> => !!s)}
