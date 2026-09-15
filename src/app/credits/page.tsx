@@ -13,7 +13,7 @@ export const metadata = { title: "Credits · Higgsfield clone" };
 const REASON_LABEL: Record<string, string> = {
   signup_grant: "Welcome credits",
   plan_grant: "Plan credits",
-  demo_topup: "Demo top-up (no charge)",
+  demo_topup: "Plan credits (demo checkout)",
   generation_charge: "Generation",
   generation_refund: "Refund",
   adjustment: "Adjustment",

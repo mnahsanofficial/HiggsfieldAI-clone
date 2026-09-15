@@ -26,7 +26,8 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 7 | `feat/assets-library` | done (PR #13) |
 | 8 | `feat/explore` | done (PR #14) |
 | 9 | `feat/paywall` | done (PR #15, merged without deploy) |
-| 9a | `fix/render-cpu-budget` | done (merged without deploy, pending builds) |
+| 9a | `fix/render-cpu-budget` | done (PR #16, merged without deploy, pending builds) |
+| 9b | `feat/paywall-checkout` | done (merged without deploy, pending builds) |
 | 10 | `fix/mobile-pass` | **next** |
 | 11 | README | todo |
 
@@ -35,13 +36,7 @@ Nothing blocking. Vercel builds resume when the CPU allowance resets (or on upgr
 
 ## Next action (priority order from the owner)
 1. ~~CPU reduction + kill switch~~ done.
-2. `feat/paywall-checkout`:
-   - demo card form (number, expiry, CVC, name; format validation only)
-   - pre-filled obviously fake test number
-   - card fields never leave the browser (not in any request, not stored)
-   - promocode `AHSAN345` (case-insensitive, trimmed) applies the plan discount and grants credits via the ledger with reason `demo_topup`, once-per-plan guard intact; other codes show an invalid-code error
-   - success state, then the header balance updates
-   - update `ui-paywall-e2e`: it drained via 1080p renders, which no longer exist; drain another way (live render + images, or a test-setup ledger adjustment)
+2. ~~`feat/paywall-checkout`~~ done: demo card form (client-only validation, card fields never sent), promo `AHSAN345` (100% off, server-checked), grant is `demo_topup`, once-per-plan across `plan_grant` + `demo_topup` notes `<Plan> plan%`. e2e sets the guest balance with `scripts/dev/set-balance.ts` (adjustment row) instead of spending renders.
 3. `feat/skeletons`: skeleton loaders matching the arriving content's aspect ratio (Explore grids, History, Assets, lightbox, pending card; keep the real progress bar).
 4. `fix/mobile-pass`
 5. README (draft notes in the session scratchpad are gone if the session restarts; the facts are in the PR descriptions #4–#16 and below)
