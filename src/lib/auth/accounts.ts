@@ -4,6 +4,7 @@ import { and, count, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { systemEvents, users } from "@/db/schema";
 import { grantCredits, STARTER_CREDITS_TENTHS } from "@/lib/credits/ledger";
+import { addExampleAssets } from "@/lib/library/examples";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 
 export type AuthResult = { ok: true; userId: string } | { ok: false; error: string; field?: "email" | "password" | "name" };
@@ -50,6 +51,7 @@ export async function registerUser(input: {
         .values({ kind: "registered", email, passwordHash, displayName })
         .returning({ id: users.id });
       await grantCredits(tx, created.id, STARTER_CREDITS_TENTHS, "signup_grant", "Welcome credits");
+      await addExampleAssets(tx, created.id);
       return { ok: true as const, userId: created.id };
     });
   } catch (err) {
@@ -100,6 +102,7 @@ export async function createGuest(ip: string | null): Promise<AuthResult> {
   const userId = await db.transaction(async (tx) => {
     const [guest] = await tx.insert(users).values({ kind: "guest", displayName: "Guest" }).returning({ id: users.id });
     await grantCredits(tx, guest.id, STARTER_CREDITS_TENTHS, "signup_grant", "Guest credits");
+    await addExampleAssets(tx, guest.id);
     await tx.insert(systemEvents).values({ kind: "guest_created", detail: { ipHash, userId: guest.id } });
     return guest.id;
   });

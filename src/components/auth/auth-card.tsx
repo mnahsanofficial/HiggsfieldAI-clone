@@ -6,12 +6,13 @@ import { type AuthFormState, signInAction, signUpAction } from "@/app/auth/actio
 import { GuestButton } from "./guest-button";
 
 type Props = {
+  hero?: { url: string; prompt: string | null } | null;
   mode: "signin" | "signup";
   next: string;
   isGuest: boolean;
 };
 
-export function AuthCard({ mode, next, isGuest }: Props) {
+export function AuthCard({ hero, mode, next, isGuest }: Props) {
   const [state, formAction, pending] = useActionState<AuthFormState, FormData>(
     mode === "signup" ? signUpAction : signInAction,
     undefined,
@@ -20,10 +21,15 @@ export function AuthCard({ mode, next, isGuest }: Props) {
 
   return (
     <div className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-[#141416] md:grid-cols-2">
-      {/* Media panel, like the reference's signup modal. Replaced by seeded generations in chore/seed-library. */}
-      <div className="relative hidden min-h-[520px] overflow-hidden bg-[radial-gradient(120%_80%_at_20%_10%,#3b4a12_0%,#141416_55%),radial-gradient(90%_70%_at_90%_90%,#4a1238_0%,transparent_60%)] md:block">
+      {/* Media panel, like the reference's signup modal: a real FLUX generation from the seed library. */}
+      <div className="relative hidden min-h-[520px] overflow-hidden bg-[radial-gradient(120%_80%_at_20%_10%,#3b4a12_0%,#141416_55%)] md:block">
+        {hero && (
+          // eslint-disable-next-line @next/next/no-img-element -- served from our own immutable /media route
+          <img src={hero.url} alt={hero.prompt ?? "Generated image"} className="absolute inset-0 h-full w-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
         <div className="absolute inset-x-6 bottom-6">
-          <span className="inline-flex rounded-full bg-black/40 px-3 py-1 text-xs text-white/80 backdrop-blur">Real image generation</span>
+          <span className="inline-flex rounded-full bg-black/50 px-3 py-1 text-xs text-white/85 backdrop-blur">Generated with FLUX.1 [schnell]</span>
           <p className="mt-3 text-3xl font-black uppercase leading-none tracking-tight">
             Direct the shot,
             <br />

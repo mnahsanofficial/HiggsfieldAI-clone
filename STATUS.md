@@ -2,8 +2,8 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/generation-jobs` merge (the ship script confirms production serves the merge SHA).
-**Works end to end now:** one-click guest or email account → credits in header → `POST /api/jobs` generates a real FLUX.1 schnell image (Cloudflare), stores it in private Blob, serves it at `/media/...`; charge on submit, refund on any failure. No image UI yet (next: seed library, then create-image).
+**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `chore/seed-library` merge (the ship script confirms production serves the merge SHA).
+**Works end to end now:** one-click guest or email account → credits in header → `POST /api/jobs` generates a real FLUX.1 schnell image (Cloudflare), stores it in private Blob, serves it at `/media/...`; charge on submit, refund on any failure. 68 real seed images in the public library; new accounts start with 6 labelled examples. No image UI yet (next: create-image).
 
 ## Plan (13h budget; build started 2026-09-14 ~20:35 UTC; one usage-limit pause mid `feat/generation-jobs`)
 
@@ -11,9 +11,9 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 |---|---|---|
 | 0 | `chore/deploy-pipeline`, `chore/db-schema`, `feat/auth` | done (PRs #4–#6) |
 | 1 | `feat/credit-ledger` | done (PR #7) |
-| 2 | `feat/generation-jobs` | done |
-| 3 | `chore/seed-library` | **next** |
-| 4 | `feat/create-image` ← checkpoint: stranger → guest → prompt → real image → credits down → in History, verified on production | todo |
+| 2 | `feat/generation-jobs` | done (PR #8) |
+| 3 | `chore/seed-library` | done |
+| 4 | `feat/create-image` **next** ← checkpoint: stranger → guest → prompt → real image → credits down → in History, verified on production | todo |
 | 5 | `feat/video-render`: first do a real ffmpeg render on Vercel; assert function duration at runtime, fail and refund if the budget won't fit | todo |
 | 6 | `feat/create-video-presets` | todo |
 | 7 | `feat/assets-library` | todo |
@@ -26,18 +26,19 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 Nothing.
 
 ## Next action
-Branch `chore/seed-library` from `main`:
-- `scripts/seed-library.ts` generates about 60–80 images through the real pipeline: Cloudflare → crop → `uploadMedia("seed/...")`. Each becomes an asset with `user_id NULL`, `is_public true`, `source generated`, plus a stable seed key so re-runs skip what exists.
-- Prompts are grouped by Explore section (Soul-style portraits, fashion, cinematic stills, product shots, VFX-style scenes, community project posters) and by aspect.
-- Watch quota: about 58 Neurons per image and 10,000 a day are shared with live users. Check `blob_usage` stays small (about 80 uploads).
-- Guest provisioning: clone a handful of seed assets into each new user's library (rows only, no uploads) so History/Assets aren't empty on first load. Label them as examples.
-- Replace the auth card's gradient panel with a seeded image.
+Branch `feat/create-image` from `main`. Build `/ai/image?model=flux_1_schnell` (recon 16):
+- Floating bottom composer: prompt, model chip, aspect, resolution, batch stepper, and GenerateButton priced by `priceJob`.
+- Main pane: empty state with a fan of seed images, then History (the user's image jobs) polling `GET /api/jobs?vertical=image`. Pending cards show progress and Cancel; failed cards show the refund notice and Retry; sample assets are labelled "Sample"; examples are labelled "Example".
+- Lightbox with download and "reuse prompt".
+- 402 opens a simple out-of-credits notice until `feat/paywall`. Add "Image" to the header NAV. Mobile-first at 390.
+- **CHECKPOINT:** on production, as a stranger: guest → prompt → real image → credits down → in History. Run `scripts/dev/api-e2e.mjs` plus a real UI click-through with puppeteer before starting step 5.
 
 ## Facts worth not re-deriving
 - **Blob store is PRIVATE.** All Blob access goes through `src/lib/storage.ts` (ESLint blocks `@vercel/blob` elsewhere): `uploadMedia(pathname under generations/|renders/|seed/)` and `readMedia`. Assets store app-relative URLs `/media/<pathname>`, served by `src/app/media/[...path]/route.ts` with an immutable 1-year cache. Locally an explicit `BLOB_READ_WRITE_TOKEN` is used, because the store's OIDC isn't enabled for Development; on Vercel it's OIDC + `BLOB_STORE_ID`.
 - Upload cap: `blob_usage` CHECK ≤ 1,500/month; `reserveUpload()` runs before every put; trips are logged once per month to `system_events`.
 - Cloudflare: `flux-1-schnell` takes `{prompt, steps}` only (`seed` is rejected, error 5006) and outputs a 1024² JPEG (~750 KB), re-encoded to about 40–110 KB. FLUX.2 klein took 14s and flagged a harmless prompt (error 3030), so it stays inactive. Errors are classified in `providers/cloudflare.ts` (quota/rate → labelled sample at no cost; flagged/bad/provider → refund only).
 - Jobs: `src/lib/jobs/service.ts`: `submitImageJob` (validate, price, insert + charge in one tx, max 4 active per user), `runImageJob` (run via `after()` from `/api/jobs`; claim → per-item cache/generate/crop/upload → succeed + insert assets), `failJob`, `cancelJob`, `retryJob`, `sweepStaleJobs` (called on GET `/api/jobs`, throttled 30s). `provider_cache` keys on provider + model + prompt + aspect + batch index.
+- Seed library: `scripts/seed-library.ts` (idempotent by slug in `seed/<section>-NN`; stops on quota). Sections: portrait 3:4, cinema 16:9, street 9:16, product 1:1, fantasy 16:9, poster 16:9, nature 4:3. QA with `scripts/dev/seed-contact-sheet.ts`. `src/lib/library/examples.ts`: `addExampleAssets` (6 row copies per new account; an example = user-owned, `source` generated, `job_id` NULL) and `randomSeedImage(section)`.
 - Credits are integer tenths; `src/lib/credits/pricing.ts` is shared by UI and server; ledger in `src/lib/credits/ledger.ts`.
 - **Verification (all against real services, all clean up after themselves):**
   - `npx tsx --conditions react-server scripts/verify-auth.ts` (18)

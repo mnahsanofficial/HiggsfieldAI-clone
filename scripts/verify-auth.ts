@@ -56,6 +56,11 @@ async function main() {
     const guest = await acc.createGuest(testIp);
     check("guest created", guest.ok);
     if (guest.ok) {
+      const { assets } = await import("../src/db/schema");
+      const ex = await db.select({ jobId: assets.jobId, source: assets.source, isPublic: assets.isPublic }).from(assets).where(eq(assets.userId, guest.userId));
+      check("guest starts with example images (row copies, private, no job)", ex.length >= 1 && ex.every((a) => a.jobId === null && a.source === "generated" && !a.isPublic), `${ex.length} examples`);
+    }
+    if (guest.ok) {
       created.push(guest.userId);
       const claimEmail = `e2e-claim-${stamp}@example.test`;
       const claim = await acc.registerUser({ email: claimEmail, password: pw, displayName: "Claimer", currentGuestId: guest.userId });
