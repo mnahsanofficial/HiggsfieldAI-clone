@@ -46,6 +46,7 @@ export async function GET(request: Request) {
       mp4Magic: out.mp4.subarray(4, 8).toString("latin1"),
       region: process.env.VERCEL_REGION ?? "local",
       cpus: (await import("node:os")).cpus().length,
+      limitEnv: Object.fromEntries(Object.entries(process.env).filter(([k]) => /DURATION|TIMEOUT|DEADLINE|MAX_?TIME|MEMORY/i.test(k)).map(([k, v]) => [k, v])),
     });
   } catch (err) {
     return NextResponse.json({ ok: false, error: String(err), totalMs: Date.now() - invokedAt }, { status: 500 });

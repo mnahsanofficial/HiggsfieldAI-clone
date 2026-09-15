@@ -107,7 +107,7 @@ export function buildFilter(motion: PresetMotion, W: number, H: number, frames: 
       const toSharp = String(P.to ?? "sharp") === "sharp";
       const k = `min(T/${(durationS * 0.8).toFixed(2)},1)`; // focus pull over the first 80%
       const sharpWeight = toSharp ? k : `(1-${k})`;
-      return `${zp(`1+0.06*${e}`, centerX, centerY)},split[s][b];[b]boxblur=luma_radius=18:luma_power=2[bl];[s][bl]blend=all_expr='A*${sharpWeight}+B*(1-${sharpWeight})',${finish}`;
+      return `${zp(`1+0.06*${e}`, centerX, centerY)},split[s][b];[b]scale=iw/4:ih/4,boxblur=luma_radius=5:luma_power=2,scale=${W}:${H}[bl];[s][bl]blend=all_expr='A*${sharpWeight}+B*(1-${sharpWeight})',${finish}`;
     }
   }
 }
