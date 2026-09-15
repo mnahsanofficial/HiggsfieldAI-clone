@@ -12,7 +12,7 @@ export const metadata = { title: "Create Video · Higgsfield clone" };
 // /ai/video?model=camera_motion&preset=...&image=<assetId> (recon 17). `image` preselects the
 // still to animate, so "Animate" in the image lightbox lands here ready to go.
 export default async function CreateVideoPage({ searchParams }: PageProps<"/ai/video">) {
-  const { preset: presetParam, image: imageParam } = await searchParams;
+  const { preset: presetParam, image: imageParam, gallery } = await searchParams;
   const user = await getCurrentUser();
   const preview = alias(assets, "preview");
 
@@ -62,6 +62,7 @@ export default async function CreateVideoPage({ searchParams }: PageProps<"/ai/v
       initialImage={initialImage}
       initialJobs={initialJobs}
       signedIn={!!user}
+      openGallery={gallery === "1"}
     />
   );
 }

@@ -21,6 +21,7 @@ type Props = {
   initialImage: PickerImage | null;
   initialJobs: JobDTO[];
   signedIn: boolean;
+  openGallery?: boolean;
 };
 
 const aspectFor = (img: PickerImage, allowed: string[]) => {
@@ -30,7 +31,7 @@ const aspectFor = (img: PickerImage, allowed: string[]) => {
 
 // Create Video (recon 17): ADD IMAGE -> CHOOSE PRESET -> GET VIDEO, with the params panel on
 // the left and History / How it works in the main pane.
-export function VideoStudio({ model, presets, initialPresetId, mine, library, initialImage, initialJobs, signedIn: initiallySignedIn }: Props) {
+export function VideoStudio({ model, presets, initialPresetId, mine, library, initialImage, initialJobs, signedIn: initiallySignedIn, openGallery = false }: Props) {
   const router = useRouter();
   const caps = model.capabilities;
   const [signedIn, setSignedIn] = useState(initiallySignedIn);
@@ -41,7 +42,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
   const [durationS, setDuration] = useState(caps.durations?.[0] ?? 5);
   const [resolution, setResolution] = useState(caps.resolutions[0]);
   const [tab, setTab] = useState<"history" | "how">(initialJobs.length ? "history" : "how");
-  const [modal, setModal] = useState<"preset" | "image" | null>(null);
+  const [modal, setModal] = useState<"preset" | "image" | null>(openGallery ? "preset" : null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<{ message: string } | null>(null);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
