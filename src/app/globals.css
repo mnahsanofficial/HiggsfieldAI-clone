@@ -18,3 +18,18 @@ body {
   color: var(--color-foreground);
   font-family: var(--font-sans);
 }
+
+/* Native <select> styled as a composer chip; keeps the platform picker on phones. */
+.chip-select {
+  appearance: none;
+  height: 100%;
+  background: transparent;
+  color: inherit;
+  padding: 0 1.75rem 0 0.75rem;
+  cursor: pointer;
+  outline: none;
+  font: inherit;
+}
+.chip-select option {
+  background: #161618;
+}

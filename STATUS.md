@@ -2,8 +2,8 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `chore/seed-library` merge (the ship script confirms production serves the merge SHA).
-**Works end to end now:** one-click guest or email account → credits in header → `POST /api/jobs` generates a real FLUX.1 schnell image (Cloudflare), stores it in private Blob, serves it at `/media/...`; charge on submit, refund on any failure. 68 real seed images in the public library; new accounts start with 6 labelled examples. No image UI yet (next: create-image).
+**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/create-image` merge (the ship script confirms production serves the merge SHA).
+**Works end to end now:** a stranger opens `/ai/image`, types a prompt and presses Generate. A guest session is created inline, a real FLUX.1 schnell image lands in History, the header credits drop 100 → 98, and the lightbox shows it labelled MODEL GENERATED. **Step-4 checkpoint:** see the `feat/create-image` PR for the production run.
 
 ## Plan (13h budget; build started 2026-09-14 ~20:35 UTC; one usage-limit pause mid `feat/generation-jobs`)
 
@@ -12,9 +12,9 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 0 | `chore/deploy-pipeline`, `chore/db-schema`, `feat/auth` | done (PRs #4–#6) |
 | 1 | `feat/credit-ledger` | done (PR #7) |
 | 2 | `feat/generation-jobs` | done (PR #8) |
-| 3 | `chore/seed-library` | done |
-| 4 | `feat/create-image` **next** ← checkpoint: stranger → guest → prompt → real image → credits down → in History, verified on production | todo |
-| 5 | `feat/video-render`: first do a real ffmpeg render on Vercel; assert function duration at runtime, fail and refund if the budget won't fit | todo |
+| 3 | `chore/seed-library` | done (PR #9) |
+| 4 | `feat/create-image` done ← checkpoint: stranger → guest → prompt → real image → credits down → in History, verified on production | todo |
+| 5 | **next** `feat/video-render`: first do a real ffmpeg render on Vercel; assert function duration at runtime, fail and refund if the budget won't fit | todo |
 | 6 | `feat/create-video-presets` | todo |
 | 7 | `feat/assets-library` | todo |
 | 8 | `feat/explore` | todo |
@@ -26,12 +26,12 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 Nothing.
 
 ## Next action
-Branch `feat/create-image` from `main`. Build `/ai/image?model=flux_1_schnell` (recon 16):
-- Floating bottom composer: prompt, model chip, aspect, resolution, batch stepper, and GenerateButton priced by `priceJob`.
-- Main pane: empty state with a fan of seed images, then History (the user's image jobs) polling `GET /api/jobs?vertical=image`. Pending cards show progress and Cancel; failed cards show the refund notice and Retry; sample assets are labelled "Sample"; examples are labelled "Example".
-- Lightbox with download and "reuse prompt".
-- 402 opens a simple out-of-credits notice until `feat/paywall`. Add "Image" to the header NAV. Mobile-first at 390.
-- **CHECKPOINT:** on production, as a stranger: guest → prompt → real image → credits down → in History. Run `scripts/dev/api-e2e.mjs` plus a real UI click-through with puppeteer before starting step 5.
+Branch `feat/video-render` from `main`. **The first thing, before any preset UI:** a real ffmpeg render inside a Vercel Function on production.
+- Add `ffmpeg-static` and a temporary protected route (or the real renderer module) that renders a 5s 720p push-in over a seed still.
+- Deploy to a preview and time it; check the bundle includes the binary (`outputFileTracingIncludes`).
+- Assert the function's real duration budget at runtime (`maxDuration` / `VERCEL_FUNCTION_MAX_DURATION` or equivalent). If the estimated render time exceeds it, fail the job with a clear reason and refund, never leaving it stuck in processing.
+- **If the ffmpeg render fails on Vercel: STOP and tell the owner, and fall back to the simulated provider.**
+- Then the renderer: push/pull/pan/tilt/arc/handheld/rack-focus from `presets.motion`, H.264 MP4, upload to `renders/`, `source='rendered'`.
 
 ## Facts worth not re-deriving
 - **Blob store is PRIVATE.** All Blob access goes through `src/lib/storage.ts` (ESLint blocks `@vercel/blob` elsewhere): `uploadMedia(pathname under generations/|renders/|seed/)` and `readMedia`. Assets store app-relative URLs `/media/<pathname>`, served by `src/app/media/[...path]/route.ts` with an immutable 1-year cache. Locally an explicit `BLOB_READ_WRITE_TOKEN` is used, because the store's OIDC isn't enabled for Development; on Vercel it's OIDC + `BLOB_STORE_ID`.
@@ -45,6 +45,8 @@ Branch `feat/create-image` from `main`. Build `/ai/image?model=flux_1_schnell` (
   - `scripts/verify-ledger.ts` (11)
   - `scripts/verify-jobs.ts` (24; spends 1 real generation)
   - HTTP as a stranger: `node scripts/dev/api-e2e.mjs <baseUrl>`
+- Checkpoint as a stranger through the real UI: `node scripts/dev/ui-image-e2e.mjs <baseUrl> [shotDir] [--mobile]` (10 checks; spends 1 generation).
+- Studio UI: `src/components/create/` holds `image-studio`, `image-composer`, `history-grid` (pending/failed/sample/succeeded tiles), `lightbox`, and `use-jobs` (polls while active; `router.refresh()` on terminal state for the header balance). Signed-out Generate calls `POST /api/auth/guest` then retries.
 - Screenshots: `node scripts/dev/shoot.mjs docs/screenshots/<branch> <baseUrl> <guest 0|1> "name|390|844|/path" ...`, linked in the PR by commit SHA.
 - Ship a branch: `scripts/dev/ship.sh <branch> "<title>" <body.md>` (waits for the Vercel check, fills `__PREVIEW_URL__`, merges with `--merge`, syncs main, waits for production).
 - Migrations: `npx drizzle-kit migrate` (uses `DATABASE_URL_UNPOOLED`), then `npm run db:seed`.
