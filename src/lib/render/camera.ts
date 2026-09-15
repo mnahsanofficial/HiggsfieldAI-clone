@@ -104,10 +104,13 @@ export function buildFilter(motion: PresetMotion, W: number, H: number, frames: 
       return `${zp(z, x, y)},${finish}`;
     }
     case "rack_focus": {
+      // A blurred copy (blurred at quarter size, which looks the same for a heavy defocus and is
+      // far cheaper) is laid over the sharp frame and its alpha faded over the first 80%.
+      // fade+overlay are cheap built-ins; a per-pixel blend expression was ~4x slower on Vercel.
       const toSharp = String(P.to ?? "sharp") === "sharp";
-      const k = `min(T/${(durationS * 0.8).toFixed(2)},1)`; // focus pull over the first 80%
-      const sharpWeight = toSharp ? k : `(1-${k})`;
-      return `${zp(`1+0.06*${e}`, centerX, centerY)},split[s][b];[b]scale=iw/4:ih/4,boxblur=luma_radius=5:luma_power=2,scale=${W}:${H}[bl];[s][bl]blend=all_expr='A*${sharpWeight}+B*(1-${sharpWeight})',${finish}`;
+      const pull = (durationS * 0.8).toFixed(2);
+      const fade = toSharp ? `fade=t=out:st=0:d=${pull}:alpha=1` : `fade=t=in:st=0:d=${pull}:alpha=1`;
+      return `${zp(`1+0.06*${e}`, centerX, centerY)},split[s][b];[b]scale=iw/4:ih/4,boxblur=luma_radius=5:luma_power=2,scale=${W}:${H},format=yuva420p,${fade}[bl];[s][bl]overlay=format=auto,${finish}`;
     }
   }
 }
