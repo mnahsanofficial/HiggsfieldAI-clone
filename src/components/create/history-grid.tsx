@@ -2,6 +2,7 @@
 
 import { formatCredits } from "@/lib/credits/format";
 import type { JobAsset, JobDTO } from "./types";
+import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
 
 type Props = {
   jobs: JobDTO[];
@@ -36,7 +37,7 @@ function JobTiles({ job, onOpen, onCancel, onRetry, busy }: { job: JobDTO; busy:
             className="relative mb-2 break-inside-avoid overflow-hidden rounded-xl border border-white/10 bg-white/[0.03]"
             style={{ aspectRatio: ratio(job.params.aspect) }}
           >
-            <div className="absolute inset-0 animate-pulse bg-[linear-gradient(110deg,transparent_30%,rgba(212,255,63,0.08)_50%,transparent_70%)] bg-[length:200%_100%]" />
+            <div className="skeleton skeleton-accent absolute inset-0" />
             <div className="absolute inset-x-0 bottom-0 flex flex-col gap-2 p-3">
               <p className="line-clamp-2 text-xs text-white/60">{job.prompt}</p>
               <div className="h-1 overflow-hidden rounded-full bg-white/10">
@@ -116,7 +117,7 @@ function AssetTile({ asset, job, onOpen }: { asset: JobAsset; job: JobDTO; onOpe
       style={{ aspectRatio: `${asset.width} / ${asset.height}` }}
     >
       {isVideo ? (
-        <video
+        <SkeletonVideo
           src={asset.url}
           poster={asset.posterUrl ?? undefined}
           muted
@@ -129,8 +130,7 @@ function AssetTile({ asset, job, onOpen }: { asset: JobAsset; job: JobDTO; onOpe
           aria-label={asset.prompt ?? job.prompt}
         />
       ) : (
-        // eslint-disable-next-line @next/next/no-img-element -- immutable /media route, sizes vary per asset
-        <img src={asset.url} alt={asset.prompt ?? job.prompt} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+        <SkeletonImg src={asset.url} alt={asset.prompt ?? job.prompt} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
       )}
       {asset.source === "sample" ? (
         <span className="absolute left-2 top-2 rounded-md bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">

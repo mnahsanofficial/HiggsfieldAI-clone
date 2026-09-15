@@ -27,7 +27,8 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 8 | `feat/explore` | done (PR #14) |
 | 9 | `feat/paywall` | done (PR #15, merged without deploy) |
 | 9a | `fix/render-cpu-budget` | done (PR #16, merged without deploy, pending builds) |
-| 9b | `feat/paywall-checkout` | done (merged without deploy, pending builds) |
+| 9b | `feat/paywall-checkout` | done (PR #17, merged without deploy) |
+| 9c | `feat/skeletons` | done (merged without deploy) |
 | 10 | `fix/mobile-pass` | **next** |
 | 11 | README | todo |
 
@@ -37,7 +38,7 @@ Nothing blocking. Vercel builds resume when the CPU allowance resets (or on upgr
 ## Next action (priority order from the owner)
 1. ~~CPU reduction + kill switch~~ done.
 2. ~~`feat/paywall-checkout`~~ done: demo card form (client-only validation, card fields never sent), promo `AHSAN345` (100% off, server-checked), grant is `demo_topup`, once-per-plan across `plan_grant` + `demo_topup` notes `<Plan> plan%`. e2e sets the guest balance with `scripts/dev/set-balance.ts` (adjustment row) instead of spending renders.
-3. `feat/skeletons`: skeleton loaders matching the arriving content's aspect ratio (Explore grids, History, Assets, lightbox, pending card; keep the real progress bar).
+3. ~~`feat/skeletons`~~ done: `SkeletonImg`/`SkeletonVideo` (components/media/skeleton-media.tsx) shimmer in the element's own aspect box until first paint; `loading.tsx` for /, /ai/image, /ai/video, /assets, /credits, /pricing, /login, /signup; lightbox box sized via container query units from asset dims. `ui-skeletons-e2e` holds /media and RSC responses to observe them.
 4. `fix/mobile-pass`
 5. README (draft notes in the session scratchpad are gone if the session restarts; the facts are in the PR descriptions #4–#16 and below)
 6. Submission readiness check

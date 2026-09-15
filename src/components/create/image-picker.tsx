@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { PickerImage } from "./types";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 
 type Props = {
   mine: PickerImage[];
@@ -86,8 +87,7 @@ export function ImagePickerModal({ mine, library, selectedId, onSelect, onClose 
                   className={`relative mb-2 block w-full break-inside-avoid overflow-hidden rounded-lg border-2 ${selectedId === img.id ? "border-accent" : "border-transparent hover:border-white/40"}`}
                   style={{ aspectRatio: `${img.width} / ${img.height}` }}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route */}
-                  <img src={img.url} alt={img.prompt ?? "Image"} loading="lazy" className="h-full w-full object-cover" />
+                  <SkeletonImg src={img.url} alt={img.prompt ?? "Image"} loading="lazy" className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

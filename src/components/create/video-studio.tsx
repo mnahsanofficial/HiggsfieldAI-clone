@@ -11,6 +11,7 @@ import { Lightbox } from "./lightbox";
 import { PresetGalleryModal } from "./preset-gallery";
 import type { JobAsset, JobDTO, PickerImage, RenderPolicy, StudioModel, StudioPreset } from "./types";
 import { useJobs } from "./use-jobs";
+import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
 
 type Props = {
   model: StudioModel;
@@ -137,7 +138,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
         <h1 className="px-1 text-sm font-semibold">Create Video</h1>
 
         <div className="relative overflow-hidden rounded-xl bg-white/5" style={{ aspectRatio: "16 / 9" }}>
-          {preset.preview && <video key={preset.id} src={preset.preview.url} poster={preset.preview.posterUrl ?? undefined} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
+          {preset.preview && <SkeletonVideo key={preset.id} src={preset.preview.url} poster={preset.preview.posterUrl ?? undefined} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
           <div className="absolute bottom-2.5 left-3">
             <p className="text-lg font-black uppercase leading-none text-accent">{preset.name}</p>
@@ -150,8 +151,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
 
         {image ? (
           <button type="button" onClick={() => setModal("image")} className="group flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-2 text-left hover:bg-white/[0.06]">
-            {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route */}
-            <img src={image.url} alt={image.prompt ?? "Selected image"} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
+            <SkeletonImg src={image.url} alt={image.prompt ?? "Selected image"} className="h-16 w-16 shrink-0 rounded-lg object-cover" />
             <span className="min-w-0">
               <span className="block text-xs text-white/45">Image to animate</span>
               <span className="line-clamp-2 text-sm text-white/85">{image.prompt ?? "Your image"}</span>
@@ -205,14 +205,13 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
             <p className="mt-2 text-sm text-white/55">{presets.length} camera presets for push-ins, pans, arcs, handheld and focus pulls, rendered over your image.</p>
             <div className="mt-6 grid gap-4 sm:grid-cols-3">
               <Step title="Add image" text="Pick an image you generated, or one from the library.">
-                {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route */}
-                {library[0] && <img src={(image ?? library[0]).url} alt="" className="h-full w-full object-cover" />}
+                {library[0] && <SkeletonImg src={(image ?? library[0]).url} alt="" className="h-full w-full object-cover" />}
               </Step>
               <Step title="Choose preset" text="Pick the camera move that directs the shot.">
-                {preset.preview && <video src={preset.preview.url} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
+                {preset.preview && <SkeletonVideo src={preset.preview.url} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
               </Step>
               <Step title="Get video" text="A real MP4 you can download, rendered in seconds.">
-                {howItWorksVideo && <video src={howItWorksVideo.url} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
+                {howItWorksVideo && <SkeletonVideo src={howItWorksVideo.url} muted loop playsInline autoPlay className="h-full w-full object-cover" />}
               </Step>
             </div>
           </div>

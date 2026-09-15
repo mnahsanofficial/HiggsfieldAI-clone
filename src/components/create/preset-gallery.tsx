@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { StudioPreset } from "./types";
+import { SkeletonVideo } from "@/components/media/skeleton-media";
 
 const CATEGORIES: { id: string; label: string }[] = [
   { id: "all", label: "All" },
@@ -46,7 +47,7 @@ export function PresetGrid({ presets, selectedId, onSelect }: { presets: StudioP
           >
             <div className="relative aspect-video bg-white/5">
               {p.preview && (
-                <video src={p.preview.url} poster={p.preview.posterUrl ?? undefined} muted loop playsInline autoPlay preload="metadata" className="h-full w-full object-cover" />
+                <SkeletonVideo src={p.preview.url} poster={p.preview.posterUrl ?? undefined} muted loop playsInline autoPlay preload="metadata" className="h-full w-full object-cover" />
               )}
               {selectedId === p.id && <span className="absolute right-2 top-2 rounded-md bg-accent px-1.5 py-0.5 text-[10px] font-bold text-black">SELECTED</span>}
               {(p.motionType === "arc" || p.motionType === "rack_focus") && (

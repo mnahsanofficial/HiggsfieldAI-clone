@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Lightbox } from "@/components/create/lightbox";
 import type { JobAsset } from "@/components/create/types";
+import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
 
 export type LibraryAsset = JobAsset & {
   jobId: string | null;
@@ -75,7 +76,7 @@ export function AssetLibrary({ initial }: { initial: LibraryAsset[] }) {
                 style={{ aspectRatio: `${a.width} / ${a.height}` }}
               >
                 {a.kind === "video" ? (
-                  <video
+                  <SkeletonVideo
                     src={a.url}
                     poster={a.posterUrl ?? undefined}
                     muted
@@ -88,8 +89,7 @@ export function AssetLibrary({ initial }: { initial: LibraryAsset[] }) {
                     aria-label={a.prompt ?? "Video"}
                   />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-                  <img src={a.url} alt={a.prompt ?? "Image"} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
+                  <SkeletonImg src={a.url} alt={a.prompt ?? "Image"} loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]" />
                 )}
                 <span className="absolute left-2 top-2 flex gap-1">
                   {example && <span className="rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/85 backdrop-blur">Example</span>}

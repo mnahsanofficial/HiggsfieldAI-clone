@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { JobAsset, JobDTO } from "./types";
+import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
 
 type Props = {
   job: Pick<JobDTO, "prompt" | "modelName"> & { params: { aspect: string } };
@@ -33,12 +34,16 @@ export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: 
   const isSample = asset.source === "sample";
   const prompt = asset.prompt ?? job.prompt;
   const cropped = !isVideo && asset.width !== asset.height;
+  // The media box is sized from the asset's own dimensions before anything loads (the largest box
+  // of that ratio that fits the stage), so the skeleton has exactly the shape of what arrives.
+  const ratio = asset.width / asset.height;
+  const fit = { aspectRatio: `${asset.width} / ${asset.height}`, width: `min(100cqw, ${ratio} * 100cqh)` };
 
   return (
     <div role="dialog" aria-modal="true" aria-label={isVideo ? "Video details" : "Image details"} className="fixed inset-0 z-50 flex flex-col bg-black/95 md:flex-row" onClick={onClose}>
-      <div className="flex min-h-0 flex-1 items-center justify-center p-3 md:p-8">
+      <div className="flex min-h-0 flex-1 items-center justify-center p-3 md:p-8" style={{ containerType: "size" }}>
         {isVideo ? (
-          <video
+          <SkeletonVideo
             src={asset.url}
             poster={asset.posterUrl ?? undefined}
             controls
@@ -47,11 +52,11 @@ export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: 
             loop
             playsInline
             onClick={(e) => e.stopPropagation()}
-            className="max-h-full max-w-full rounded-lg"
+            style={fit}
+            className="rounded-lg"
           />
         ) : (
-          // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-          <img src={asset.url} alt={prompt} onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />
+          <SkeletonImg src={asset.url} alt={prompt} onClick={(e) => e.stopPropagation()} style={fit} className="rounded-lg object-contain" />
         )}
       </div>
       <aside

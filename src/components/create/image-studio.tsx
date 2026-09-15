@@ -9,6 +9,7 @@ import { type ComposerState, ImageComposer } from "./image-composer";
 import { Lightbox } from "./lightbox";
 import type { JobAsset, JobDTO, StudioModel } from "./types";
 import { useJobs } from "./use-jobs";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 
 type Props = {
   models: StudioModel[];
@@ -143,8 +144,7 @@ function EmptyState({ modelName, showcase }: { modelName: string; showcase: { ur
     <div className="flex min-h-[55vh] flex-col items-center justify-center text-center">
       <div className="mb-8 flex items-end justify-center">
         {showcase.slice(0, 4).map((s, i) => (
-          // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-          <img
+          <SkeletonImg
             key={s.url}
             src={s.url}
             alt={s.prompt ?? "Example generation"}
