@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect } from "react";
 import type { JobAsset, JobDTO } from "./types";
 
@@ -7,11 +8,11 @@ type Props = {
   job: JobDTO;
   asset: JobAsset;
   onClose: () => void;
-  onReuse: (prompt: string) => void;
+  onReuse?: (prompt: string) => void;
 };
 
-// Result view (not observed in the recon, so an assumption): full image, what made it,
-// how it was produced, download, and reuse the prompt.
+// Result view (not observed in the recon, so an assumption): the full image or video, what
+// made it and how (generated vs rendered vs sample), download, and the next step.
 export function Lightbox({ job, asset, onClose, onReuse }: Props) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -23,15 +24,30 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
     };
   }, [onClose]);
 
+  const isVideo = asset.kind === "video";
   const isSample = asset.source === "sample";
   const prompt = asset.prompt ?? job.prompt;
-  const cropped = asset.width !== asset.height;
+  const cropped = !isVideo && asset.width !== asset.height;
 
   return (
-    <div role="dialog" aria-modal="true" aria-label="Image details" className="fixed inset-0 z-50 flex flex-col bg-black/95 md:flex-row" onClick={onClose}>
+    <div role="dialog" aria-modal="true" aria-label={isVideo ? "Video details" : "Image details"} className="fixed inset-0 z-50 flex flex-col bg-black/95 md:flex-row" onClick={onClose}>
       <div className="flex min-h-0 flex-1 items-center justify-center p-3 md:p-8">
-        {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route */}
-        <img src={asset.url} alt={prompt} onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />
+        {isVideo ? (
+          <video
+            src={asset.url}
+            poster={asset.posterUrl ?? undefined}
+            controls
+            autoPlay
+            muted
+            loop
+            playsInline
+            onClick={(e) => e.stopPropagation()}
+            className="max-h-full max-w-full rounded-lg"
+          />
+        ) : (
+          // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
+          <img src={asset.url} alt={prompt} onClick={(e) => e.stopPropagation()} className="max-h-full max-w-full rounded-lg object-contain" />
+        )}
       </div>
       <aside
         onClick={(e) => e.stopPropagation()}
@@ -41,6 +57,8 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
           <div className="flex flex-wrap gap-1.5">
             {isSample ? (
               <span className="rounded-md bg-amber-400 px-2 py-0.5 text-xs font-bold text-black">SAMPLE, NOT YOUR PROMPT</span>
+            ) : isVideo ? (
+              <span className="rounded-md bg-sky-300 px-2 py-0.5 text-xs font-bold text-black">RENDERED CAMERA MOVE</span>
             ) : (
               <span className="rounded-md bg-accent px-2 py-0.5 text-xs font-bold text-black">MODEL GENERATED</span>
             )}
@@ -50,19 +68,25 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
             ×
           </button>
         </div>
+        {isVideo && (
+          <p className="rounded-lg bg-white/5 px-3 py-2 text-xs leading-relaxed text-white/65">
+            Not AI-generated video. A real camera move, rendered frame by frame over the image with ffmpeg.
+          </p>
+        )}
         <div>
-          <p className="text-xs uppercase tracking-widest text-white/40">Prompt</p>
+          <p className="text-xs uppercase tracking-widest text-white/40">{isVideo ? "Shot" : "Prompt"}</p>
           <p className="mt-1 text-sm leading-relaxed text-white/90">{prompt}</p>
         </div>
         <dl className="grid grid-cols-2 gap-3 text-sm">
           <div>
-            <dt className="text-xs text-white/40">Model</dt>
+            <dt className="text-xs text-white/40">{isVideo ? "Renderer" : "Model"}</dt>
             <dd>{job.modelName}</dd>
           </div>
           <div>
             <dt className="text-xs text-white/40">Size</dt>
             <dd className="tabular-nums">
               {asset.width}×{asset.height}
+              {isVideo && asset.durationMs ? ` · ${Math.round(asset.durationMs / 1000)}s` : ""}
             </dd>
           </div>
         </dl>
@@ -70,16 +94,23 @@ export function Lightbox({ job, asset, onClose, onReuse }: Props) {
           <a href={asset.url} download className="flex h-11 flex-1 items-center justify-center rounded-xl bg-white/10 text-sm font-semibold hover:bg-white/15">
             Download
           </a>
-          <button
-            type="button"
-            onClick={() => {
-              onReuse(prompt);
-              onClose();
-            }}
-            className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-black"
-          >
-            Reuse prompt
-          </button>
+          {!isVideo && !isSample && (
+            <Link href={`/ai/video?image=${asset.id}`} className="flex h-11 flex-1 items-center justify-center rounded-xl bg-white/10 text-sm font-semibold hover:bg-white/15">
+              Animate
+            </Link>
+          )}
+          {onReuse && !isVideo && (
+            <button
+              type="button"
+              onClick={() => {
+                onReuse(prompt);
+                onClose();
+              }}
+              className="flex h-11 flex-1 items-center justify-center rounded-xl bg-accent text-sm font-semibold text-black"
+            >
+              Reuse
+            </button>
+          )}
         </div>
       </aside>
     </div>
