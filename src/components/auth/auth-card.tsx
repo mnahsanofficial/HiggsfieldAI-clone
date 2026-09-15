@@ -110,11 +110,11 @@ export function AuthCard({ hero, mode, next, isGuest }: Props) {
         <p className="text-center text-sm text-white/55">
           {mode === "signup" ? (
             <>
-              Already have an account? <Link className="text-white underline" href={`/login${nextQuery}`}>Sign in</Link>
+              Already have an account? <Link className="inline-block py-2 text-white underline" href={`/login${nextQuery}`}>Sign in</Link>
             </>
           ) : (
             <>
-              New here? <Link className="text-white underline" href={`/signup${nextQuery}`}>Create an account</Link>
+              New here? <Link className="inline-block py-2 text-white underline" href={`/signup${nextQuery}`}>Create an account</Link>
             </>
           )}
         </p>

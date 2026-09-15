@@ -131,7 +131,7 @@ export function DemoCheckout({
   return (
     <form onSubmit={submit} noValidate autoComplete="off" className="mx-auto grid w-full max-w-3xl gap-4 md:grid-cols-[1fr_1.1fr]" aria-label={`Demo checkout for ${plan.name}`}>
       <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#141416] p-4 sm:p-5">
-        <button type="button" onClick={onBack} className="self-start text-sm text-white/55 hover:text-white">
+        <button type="button" onClick={onBack} className="-my-2 self-start py-2 text-sm text-white/55 hover:text-white">
           ← All plans
         </button>
         <p className="text-2xl font-black uppercase tracking-tight">{plan.name}</p>

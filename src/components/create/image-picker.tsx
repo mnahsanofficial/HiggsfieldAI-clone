@@ -37,7 +37,7 @@ export function ImagePickerModal({ mine, library, selectedId, onSelect, onClose 
             <h2 className="text-lg font-bold uppercase tracking-tight">Add image</h2>
             <p className="text-xs text-white/50">
               Choose the still to animate.{" "}
-              <Link href="/ai/image" className="text-accent underline">
+              <Link href="/ai/image" className="inline-block py-2 text-accent underline">
                 Generate a new one
               </Link>
             </p>
@@ -69,7 +69,7 @@ export function ImagePickerModal({ mine, library, selectedId, onSelect, onClose 
           {images.length === 0 ? (
             <p className="py-10 text-center text-sm text-white/50">
               No images yet.{" "}
-              <Link href="/ai/image" className="text-accent underline">
+              <Link href="/ai/image" className="inline-block py-2 text-accent underline">
                 Generate one
               </Link>{" "}
               or pick from the library.

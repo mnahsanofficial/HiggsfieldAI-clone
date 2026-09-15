@@ -61,7 +61,7 @@ export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: 
       </div>
       <aside
         onClick={(e) => e.stopPropagation()}
-        className="flex max-h-[45vh] shrink-0 flex-col gap-4 overflow-y-auto border-t border-white/10 bg-[#121214] p-4 md:max-h-none md:w-80 md:border-l md:border-t-0 md:p-6"
+        className="flex max-h-[45vh] shrink-0 flex-col gap-4 overflow-y-auto border-t border-white/10 bg-[#121214] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] md:max-h-none md:w-80 md:border-l md:border-t-0 md:p-6"
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap gap-1.5">
