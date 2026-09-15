@@ -71,13 +71,13 @@ async function main() {
       check("claim adds no second grant", ledger.length === 1 && u.creditBalanceTenths === 1000);
     }
 
-    // 6. Guest limit: 5 per IP per hour, 6th refused and logged.
-    for (let i = 0; i < 4; i++) {
+    // 6. Guest limit: GUESTS_PER_IP_PER_HOUR per IP per hour (1 already created above), then refused and logged.
+    for (let i = 1; i < acc.GUESTS_PER_IP_PER_HOUR; i++) {
       const g = await acc.createGuest(testIp);
       if (g.ok) created.push(g.userId);
     }
     const sixth = await acc.createGuest(testIp);
-    check("6th guest from same IP within the hour refused", !sixth.ok, !sixth.ok ? sixth.error : "");
+    check(`guest #${acc.GUESTS_PER_IP_PER_HOUR + 1} from same IP within the hour refused`, !sixth.ok, !sixth.ok ? sixth.error : "");
     if (sixth.ok) created.push(sixth.userId);
     const [{ n }] = await db.select({ n: sql<number>`count(*)::int` }).from(systemEvents).where(eq(systemEvents.kind, "guest_limited"));
     check("limit trip logged to system_events", n >= 1);
