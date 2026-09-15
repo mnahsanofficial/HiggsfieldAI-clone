@@ -29,19 +29,19 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 9a | `fix/render-cpu-budget` | done (PR #16, merged without deploy, pending builds) |
 | 9b | `feat/paywall-checkout` | done (PR #17, merged without deploy) |
 | 9c | `feat/skeletons` | done (PR #18) |
-| 9d | `fix/mobile-pass` | done |
-| 10 | `fix/mobile-pass` | **next** |
-| 11 | README | todo |
+| 9d | `fix/mobile-pass` | done (PR #19) |
+| 10 | `chore/readme` | done |
+| 11 | submission readiness check | **next** |
 
 ## Waiting on the owner
-Nothing blocking. Vercel builds resume when the CPU allowance resets (or on upgrade); until then production stays on `2ed9f13`.
+Nothing blocking. Production deploys from `main` work; preview builds still fail (cause not investigated; production is what's judged).
 
 ## Next action (priority order from the owner)
 1. ~~CPU reduction + kill switch~~ done.
 2. ~~`feat/paywall-checkout`~~ done: demo card form (client-only validation, card fields never sent), promo `AHSAN345` (100% off, server-checked), grant is `demo_topup`, once-per-plan across `plan_grant` + `demo_topup` notes `<Plan> plan%`. e2e sets the guest balance with `scripts/dev/set-balance.ts` (adjustment row) instead of spending renders.
 3. ~~`feat/skeletons`~~ done: `SkeletonImg`/`SkeletonVideo` (components/media/skeleton-media.tsx) shimmer in the element's own aspect box until first paint; `loading.tsx` for /, /ai/image, /ai/video, /assets, /credits, /pricing, /login, /signup; lightbox box sized via container query units from asset dims. `ui-skeletons-e2e` holds /media and RSC responses to observe them.
 4. ~~`fix/mobile-pass`~~ done: `scripts/dev/mobile-audit.mjs` (16 surfaces at 390: overflow, tap targets ≥32px, controls ≥16px text) all clean; branded 404 + error page; safe-area padding for composer/sheets.
-5. README (draft notes in the session scratchpad are gone if the session restarts; the facts are in the PR descriptions #4–#16 and below)
+5. ~~README~~ done (`README.md`).
 6. Submission readiness check
 7. Improvement: only if all of the above is done; otherwise skip without asking.
 
