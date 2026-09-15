@@ -30,8 +30,8 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 9b | `feat/paywall-checkout` | done (PR #17, merged without deploy) |
 | 9c | `feat/skeletons` | done (PR #18) |
 | 9d | `fix/mobile-pass` | done (PR #19) |
-| 10 | `chore/readme` | done |
-| 11 | submission readiness check | **next** |
+| 10 | `chore/readme` | done (PR #20) |
+| 11 | `chore/submission-check` | done |
 
 ## Waiting on the owner
 Nothing blocking. Production deploys from `main` work; preview builds still fail (cause not investigated; production is what's judged).
@@ -42,8 +42,13 @@ Nothing blocking. Production deploys from `main` work; preview builds still fail
 3. ~~`feat/skeletons`~~ done: `SkeletonImg`/`SkeletonVideo` (components/media/skeleton-media.tsx) shimmer in the element's own aspect box until first paint; `loading.tsx` for /, /ai/image, /ai/video, /assets, /credits, /pricing, /login, /signup; lightbox box sized via container query units from asset dims. `ui-skeletons-e2e` holds /media and RSC responses to observe them.
 4. ~~`fix/mobile-pass`~~ done: `scripts/dev/mobile-audit.mjs` (16 surfaces at 390: overflow, tap targets ≥32px, controls ≥16px text) all clean; branded 404 + error page; safe-area padding for composer/sheets.
 5. ~~README~~ done (`README.md`).
-6. Submission readiness check
-7. Improvement: only if all of the above is done; otherwise skip without asking.
+6. ~~Submission readiness check~~ done 2026-09-15 ~07:30 UTC against production `621d257`:
+   - api-e2e, ui-explore (390, 90/91 links, no dead links), ui-image (390), ui-video (390; live render + labelled free example), ui-assets (1440), ui-paywall (390, AHSAN345, no card data in any request), mobile-audit (16/16 surfaces)
+   - DB-level: verify-auth 19, verify-ledger 11, verify-jobs 24, verify-plans 16, verify-video 19, all pass (run verify-auth with `GUEST_LIMIT_PER_HOUR=30`: `.env.local` sets 1000 and the limit test loops up to it)
+   - no secrets in tracked files (incl. `.agent-logs`); `/api/render-test` 404 in production; render mode `live`; squash merge disabled; no stray branches
+7. Improvement: skipped. Recon §6 ("My reactions", where the one improvement comes from) is still the owner's to fill, and inventing it would contradict the recon.
+
+**Owner to-dos before submitting:** fill recon §6; record the walkthrough.
 
 ## Facts worth not re-deriving
 - **Render policy:** `src/lib/render/policy.ts`.
