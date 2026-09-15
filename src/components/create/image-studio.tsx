@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { PaywallModal } from "@/components/billing/paywall-modal";
 import { formatCredits } from "@/lib/credits/format";
 import { HistoryGrid } from "./history-grid";
 import { type ComposerState, ImageComposer } from "./image-composer";
@@ -29,6 +30,7 @@ export function ImageStudio({ models, initialModelId, initialPrompt = "", initia
   const [error, setError] = useState<{ message: string; outOfCredits?: boolean } | null>(null);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [open, setOpen] = useState<{ job: JobDTO; asset: JobAsset } | null>(null);
+  const [paywall, setPaywall] = useState<{ requiredTenths: number; balanceTenths: number } | null>(null);
 
   const describe = (status: number, body: ApiError) =>
     body.error === "insufficient_credits"
@@ -61,6 +63,8 @@ export function ImageStudio({ models, initialModelId, initialPrompt = "", initia
       if (res.status === 201) {
         upsert(body.job as JobDTO);
         router.refresh(); // header balance
+      } else if (body.error === "insufficient_credits") {
+        setPaywall({ requiredTenths: body.requiredTenths, balanceTenths: body.balanceTenths });
       } else {
         setError(describe(res.status, body));
       }
@@ -127,6 +131,7 @@ export function ImageStudio({ models, initialModelId, initialPrompt = "", initia
         </div>
       </div>
 
+      {paywall && <PaywallModal requiredTenths={paywall.requiredTenths} balanceTenths={paywall.balanceTenths} onClose={() => setPaywall(null)} />}
       {open && <Lightbox job={open.job} asset={open.asset} onClose={() => setOpen(null)} onReuse={(prompt) => setComposer((s) => ({ ...s, prompt }))} />}
     </main>
   );

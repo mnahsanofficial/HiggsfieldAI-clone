@@ -12,6 +12,7 @@ const NAV: { href: string; label: string; desktopOnly?: boolean }[] = [
   { href: "/ai/image", label: "Image" },
   { href: "/ai/video", label: "Video" },
   { href: "/assets", label: "Assets" },
+  { href: "/pricing", label: "Pricing", desktopOnly: true },
 ];
 
 export async function AppHeader() {

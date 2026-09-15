@@ -24,5 +24,5 @@ gh pr merge "$BR" --merge --delete-branch | tail -1
 git fetch --prune origin -q; git switch -q main; git merge -q --ff-only origin/main
 echo "main: $(git log --oneline -1)"
 SHA=$(git rev-parse --short HEAD)
-for i in $(seq 1 40); do curl -s https://higgsfield-ai-clone.vercel.app | grep -q "$SHA" && { echo "PRODUCTION GREEN: serving $SHA"; exit 0; }; sleep 10; done
+for i in $(seq 1 40); do curl -s https://higgsfield-ai-clone.vercel.app/api/health | grep -q "\"commit\":\"$SHA\"" && { echo "PRODUCTION GREEN: /api/health reports $SHA"; exit 0; }; sleep 10; done
 echo "PRODUCTION NOT SERVING $SHA YET"; exit 2

@@ -2,8 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { PaywallModal } from "@/components/billing/paywall-modal";
 import { GenerateButton } from "@/components/credits/generate-button";
-import { formatCredits } from "@/lib/credits/format";
 import { priceJob } from "@/lib/credits/pricing";
 import { HistoryGrid } from "./history-grid";
 import { ImagePickerModal } from "./image-picker";
@@ -47,6 +47,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
   const [error, setError] = useState<{ message: string } | null>(null);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [open, setOpen] = useState<{ job: JobDTO; asset: JobAsset } | null>(null);
+  const [paywall, setPaywall] = useState<{ requiredTenths: number; balanceTenths: number } | null>(null);
 
   const price = priceJob(model.pricing, { resolution, batchSize: 1, durationS });
 
@@ -78,7 +79,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
         setTab("history");
         router.refresh();
       } else if (body.error === "insufficient_credits") {
-        setError({ message: `Not enough credits: this costs ${formatCredits(body.requiredTenths)}, you have ${formatCredits(body.balanceTenths)}.` });
+        setPaywall({ requiredTenths: body.requiredTenths, balanceTenths: body.balanceTenths });
       } else {
         setError({ message: body.message ?? "Something went wrong. Nothing was charged." });
       }
@@ -217,6 +218,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
           onClose={() => setModal(null)}
         />
       )}
+      {paywall && <PaywallModal requiredTenths={paywall.requiredTenths} balanceTenths={paywall.balanceTenths} onClose={() => setPaywall(null)} />}
       {open && <Lightbox job={open.job} asset={open.asset} onClose={() => setOpen(null)} />}
     </main>
   );
