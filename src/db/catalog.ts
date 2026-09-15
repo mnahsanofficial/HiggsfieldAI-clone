@@ -102,10 +102,13 @@ export const MODELS: ModelSeed[] = [
     providerModelRef: "ffmpeg-camera-v1",
     isModelGenerated: false,
     minPlanRank: 0,
+    // Live renders are limited to 720p and 5s: every render is real CPU inside a Vercel
+    // Function, and the Hobby Fluid Active CPU allowance (4h/month) was exhausted during the
+    // build. Pricing keeps the 1080p/10s multipliers for when capacity allows re-enabling them.
     capabilities: {
       aspects: ["16:9", "9:16", "1:1"],
-      resolutions: ["720p", "1080p"],
-      durations: [5, 10],
+      resolutions: ["720p"],
+      durations: [5],
       maxBatch: 1,
       acceptsImageInput: true,
     },

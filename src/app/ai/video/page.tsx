@@ -6,6 +6,7 @@ import { db } from "@/db";
 import { assets, models, presets } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { listJobs } from "@/lib/jobs/service";
+import { renderPolicyFor } from "@/lib/render/policy";
 
 export const metadata = { title: "Create Video · Higgsfield clone" };
 
@@ -43,6 +44,7 @@ export default async function CreateVideoPage({ searchParams }: PageProps<"/ai/v
     id: p.id,
     name: p.name,
     category: p.category,
+    motionType: p.motion.type,
     description: p.description,
     featured: p.featured,
     preview: url ? { url, posterUrl } : null,
@@ -50,6 +52,7 @@ export default async function CreateVideoPage({ searchParams }: PageProps<"/ai/v
   const mine: PickerImage[] = mineRows;
   const library: PickerImage[] = libraryRows;
   const initialImage = [...mine, ...library].find((i) => i.id === imageParam) ?? null;
+  const policy = await renderPolicyFor(user?.id ?? null, user?.kind ?? null);
   const initialJobs: JobDTO[] = jobs.map((j) => ({ ...j, createdAt: j.createdAt.toISOString(), finishedAt: j.finishedAt?.toISOString() ?? null }));
 
   return (
@@ -63,6 +66,7 @@ export default async function CreateVideoPage({ searchParams }: PageProps<"/ai/v
       initialJobs={initialJobs}
       signedIn={!!user}
       openGallery={gallery === "1"}
+      policy={policy}
     />
   );
 }

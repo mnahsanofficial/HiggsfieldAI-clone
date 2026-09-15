@@ -11,9 +11,10 @@ import type { PresetMotion } from "@/db/schema";
 // Renders a real camera move over a still image with ffmpeg: a genuine transform of a real
 // input producing a real H.264 MP4. There is no diffusion step; the UI says so.
 //
-// Smoothness: zoompan positions are whole pixels, so the still is prepared at 2x the output
-// size and upscaled 2x again inside ffmpeg (4x total). That keeps sub-pixel motion smooth
-// and happens once per render, not per frame (zoompan emits every frame from one input).
+// Headroom: the still is prepared at 2x the output size, so zoompan (whole-pixel positions in
+// source space) moves in half-pixel output steps. An extra 2x upscale inside ffmpeg was tried
+// and measured: it cost ~20% more CPU per render for motion no one could tell apart, so it's
+// gone. CPU is the binding limit on Vercel Hobby (Fluid Active CPU, 4h/month).
 
 export class RenderBudgetError extends Error {
   constructor(
@@ -54,7 +55,7 @@ export function buildFilter(motion: PresetMotion, W: number, H: number, frames: 
   const e = eased(frames, String(P.easing ?? "inOut"));
   const centerX = "iw/2-(iw/zoom/2)";
   const centerY = "ih/2-(ih/zoom/2)";
-  const zp = (z: string, x: string, y: string) => `scale=iw*2:ih*2,zoompan=z='${z}':x='${x}':y='${y}':d=${frames}:s=${W}x${H}:fps=${fps}`;
+  const zp = (z: string, x: string, y: string) => `zoompan=z='${z}':x='${x}':y='${y}':d=${frames}:s=${W}x${H}:fps=${fps}`;
   const finish = "format=yuv420p";
 
   switch (motion.type) {
@@ -88,7 +89,7 @@ export function buildFilter(motion: PresetMotion, W: number, H: number, frames: 
       // rotate crops back to W×H. cosθ + (16/9)·sinθ ≈ 1.09 at θ=3°, so 1.1 covers 16:9.
       const OW = Math.ceil((W * 1.1) / 2) * 2;
       const OH = Math.ceil((H * 1.1) / 2) * 2;
-      const arcPan = `scale=iw*2:ih*2,zoompan=z='${z}':x='(iw-iw/zoom)*${pos}':y='${centerY}':d=${frames}:s=${OW}x${OH}:fps=${fps}`;
+      const arcPan = `zoompan=z='${z}':x='(iw-iw/zoom)*${pos}':y='${centerY}':d=${frames}:s=${OW}x${OH}:fps=${fps}`;
       return `${arcPan},rotate='${rollExpr}':ow=${W}:oh=${H}:c=black,${finish}`;
     }
     case "handheld": {
@@ -140,7 +141,7 @@ export async function renderCameraMove(input: RenderInput): Promise<RenderOutput
       "-filter_complex", filter,
       "-frames:v", String(frames),
       "-r", String(fps),
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "22", "-pix_fmt", "yuv420p",
+      "-c:v", "libx264", "-preset", "superfast", "-crf", "23", "-pix_fmt", "yuv420p",
       "-movflags", "+faststart",
       "-progress", "pipe:1",
       "-y", outPath,

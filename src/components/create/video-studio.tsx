@@ -9,7 +9,7 @@ import { HistoryGrid } from "./history-grid";
 import { ImagePickerModal } from "./image-picker";
 import { Lightbox } from "./lightbox";
 import { PresetGalleryModal } from "./preset-gallery";
-import type { JobAsset, JobDTO, PickerImage, StudioModel, StudioPreset } from "./types";
+import type { JobAsset, JobDTO, PickerImage, RenderPolicy, StudioModel, StudioPreset } from "./types";
 import { useJobs } from "./use-jobs";
 
 type Props = {
@@ -22,6 +22,7 @@ type Props = {
   initialJobs: JobDTO[];
   signedIn: boolean;
   openGallery?: boolean;
+  policy: RenderPolicy;
 };
 
 const aspectFor = (img: PickerImage, allowed: string[]) => {
@@ -31,7 +32,8 @@ const aspectFor = (img: PickerImage, allowed: string[]) => {
 
 // Create Video (recon 17): ADD IMAGE -> CHOOSE PRESET -> GET VIDEO, with the params panel on
 // the left and History / How it works in the main pane.
-export function VideoStudio({ model, presets, initialPresetId, mine, library, initialImage, initialJobs, signedIn: initiallySignedIn, openGallery = false }: Props) {
+export function VideoStudio({ model, presets, initialPresetId, mine, library, initialImage, initialJobs, signedIn: initiallySignedIn, openGallery = false, policy }: Props) {
+  const [liveLeft, setLiveLeft] = useState(policy.liveRendersLeft);
   const router = useRouter();
   const caps = model.capabilities;
   const [signedIn, setSignedIn] = useState(initiallySignedIn);
@@ -49,7 +51,19 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
   const [open, setOpen] = useState<{ job: JobDTO; asset: JobAsset } | null>(null);
   const [paywall, setPaywall] = useState<{ requiredTenths: number; balanceTenths: number } | null>(null);
 
-  const price = priceJob(model.pricing, { resolution, batchSize: 1, durationS });
+  const listPrice = priceJob(model.pricing, { resolution, batchSize: 1, durationS });
+  // Mirrors the server's render policy so the button says what will happen before the click.
+  const prerenderOnly = policy.prerenderOnlyMotions.includes(preset.motionType);
+  const willPrerender = policy.mode === "prerendered" || prerenderOnly || liveLeft <= 0;
+  const price = willPrerender ? { costTenths: 0, listTenths: 0 } : listPrice;
+  const fallbackNote =
+    policy.mode === "prerendered"
+      ? "Live rendering is paused on this free-tier deployment. You'll get a pre-rendered example of this move, free."
+      : prerenderOnly
+        ? "This move uses about twice the compute of the others, so it's served as a pre-rendered example, free."
+        : liveLeft <= 0
+          ? "You've used your live render. Next videos are pre-rendered examples of the move, free."
+          : `${liveLeft} live render${liveLeft === 1 ? "" : "s"} left on this free-tier deployment. After that, pre-rendered examples.`;
 
   const submit = useCallback(async () => {
     if (!image) {
@@ -76,6 +90,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
       const body = await res.json();
       if (res.status === 201) {
         upsert(body.job as JobDTO);
+        if ((body.job as JobDTO).costTenths > 0) setLiveLeft((n) => Math.max(0, n - 1));
         setTab("history");
         router.refresh();
       } else if (body.error === "insufficient_credits") {
@@ -161,7 +176,8 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
         <Segmented label="Aspect" value={aspect} options={caps.aspects.map((a) => [a, a])} onChange={setAspect} />
         <Segmented label="Quality" value={resolution} options={caps.resolutions.map((r) => [r, r])} onChange={setResolution} />
 
-        <GenerateButton costTenths={price.costTenths} listTenths={price.listTenths} pending={submitting} label={image ? "Generate" : "Add image to generate"} type="button" onClick={submit} className="w-full" />
+        <GenerateButton costTenths={price.costTenths} listTenths={price.listTenths} pending={submitting} label={!image ? "Add image to generate" : willPrerender ? "Get example" : "Generate"} type="button" onClick={submit} className="w-full" />
+        <p className={`px-1 text-xs ${willPrerender ? "text-amber-300/90" : "text-white/45"}`}>{fallbackNote}</p>
         {error && (
           <p role="alert" className="px-1 text-sm text-red-400">
             {error.message}

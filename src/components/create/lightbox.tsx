@@ -60,7 +60,9 @@ export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: 
       >
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-wrap gap-1.5">
-            {isSample ? (
+            {isSample && isVideo ? (
+              <span className="rounded-md bg-amber-400 px-2 py-0.5 text-xs font-bold text-black">PRE-RENDERED EXAMPLE</span>
+            ) : isSample ? (
               <span className="rounded-md bg-amber-400 px-2 py-0.5 text-xs font-bold text-black">SAMPLE, NOT YOUR PROMPT</span>
             ) : isVideo ? (
               <span className="rounded-md bg-sky-300 px-2 py-0.5 text-xs font-bold text-black">RENDERED CAMERA MOVE</span>
@@ -74,7 +76,12 @@ export function Lightbox({ job, asset, onClose, onReuse, onDelete, isExample }: 
             ×
           </button>
         </div>
-        {isVideo && (
+        {isVideo && isSample && (
+          <p className="rounded-lg bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-200">
+            A pre-rendered example of this camera move over a library image, not rendered from your image. Served because this free-tier deployment limits live rendering to stay within its compute allowance. No credits were charged.
+          </p>
+        )}
+        {isVideo && !isSample && (
           <p className="rounded-lg bg-white/5 px-3 py-2 text-xs leading-relaxed text-white/65">
             Not AI-generated video. A real camera move, rendered frame by frame over the image with ffmpeg.
           </p>

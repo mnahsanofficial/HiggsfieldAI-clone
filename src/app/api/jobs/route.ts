@@ -23,7 +23,8 @@ export async function POST(request: Request) {
     let jobId: string;
     let costTenths: number;
     if (body.vertical === "video") {
-      ({ jobId, costTenths } = await submitVideoJob(user.id, {
+      let live: boolean;
+      ({ jobId, costTenths, live } = await submitVideoJob(user.id, {
         modelId: String(body.modelId ?? ""),
         presetId: String(body.presetId ?? ""),
         inputAssetId: String(body.inputAssetId ?? ""),
@@ -31,7 +32,8 @@ export async function POST(request: Request) {
         resolution: String(body.resolution ?? ""),
         durationS: Number(body.durationS ?? 5),
       }));
-      after(() => runVideoJob(jobId, invokedAt));
+      // Pre-rendered examples are complete at submit; only live renders use the function's CPU.
+      if (live) after(() => runVideoJob(jobId, invokedAt));
     } else {
       ({ jobId, costTenths } = await submitImageJob(user.id, {
         modelId: String(body.modelId ?? ""),

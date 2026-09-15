@@ -23,15 +23,19 @@ export function GenerateButton({ costTenths, listTenths, disabled, pending, labe
       type={type}
       onClick={onClick}
       disabled={disabled || pending}
-      aria-label={`${label}, costs ${formatCredits(costTenths)} credits`}
+      aria-label={costTenths === 0 ? `${label}, free` : `${label}, costs ${formatCredits(costTenths)} credits`}
       className={`flex h-12 items-center justify-center gap-2 rounded-xl bg-accent px-5 font-semibold text-black transition hover:brightness-95 disabled:cursor-not-allowed disabled:bg-accent/45 disabled:text-black/60 ${className}`}
     >
       <span>{pending ? "Starting…" : label}</span>
-      <span className="flex items-center gap-1 tabular-nums">
-        <CreditGlyph />
-        {showList && <s className="text-black/45">{formatCredits(listTenths)}</s>}
-        <span>{formatCredits(costTenths)}</span>
-      </span>
+      {costTenths === 0 ? (
+        <span className="rounded bg-black/15 px-1.5 py-0.5 text-xs font-bold uppercase">Free</span>
+      ) : (
+        <span className="flex items-center gap-1 tabular-nums">
+          <CreditGlyph />
+          {showList && <s className="text-black/45">{formatCredits(listTenths)}</s>}
+          <span>{formatCredits(costTenths)}</span>
+        </span>
+      )}
     </button>
   );
 }

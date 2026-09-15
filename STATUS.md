@@ -2,7 +2,8 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green, serving the `feat/explore` merge (`2ed9f13`). **`feat/paywall` (PR #15) is NOT merged: every new Vercel build fails, see Waiting on the owner.** (the ship script confirms production serves the merge SHA).
+**Production:** https://higgsfield-ai-clone.vercel.app still serves the `feat/explore` merge (`2ed9f13`). **Vercel builds are blocked:** the Hobby Fluid Active CPU allowance is exhausted (6h 51m of 4h, from ffmpeg renders). The owner is staying on Hobby. PRs merge after local verification at 390px and 1440px; `main` deploys automatically when builds resume. Retry a deploy at most every 30 min.
+**Kill switch (no deploy):** `npx tsx --conditions react-server scripts/ops/render-mode.ts prerendered` (or `live`). Takes effect within ~10s.
 
 **Works end to end now:**
 - **Image:** a stranger opens `/ai/image`, prompt → Generate → a real FLUX.1 schnell image in History, credits 100 → 98 (checkpoint passed on production).
@@ -24,32 +25,37 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 6 | `feat/create-video-presets` | done (PR #12) |
 | 7 | `feat/assets-library` | done (PR #13) |
 | 8 | `feat/explore` | done (PR #14) |
-| 9 | `feat/paywall` | built and verified locally; PR #15 open, **blocked on Vercel builds** |
+| 9 | `feat/paywall` | done (PR #15, merged without deploy) |
+| 9a | `fix/render-cpu-budget` | done (merged without deploy, pending builds) |
 | 10 | `fix/mobile-pass` | **next** |
 | 11 | README | todo |
 
 ## Waiting on the owner
-**Vercel builds fail for the project with `BUILD_FAILED: Resource provisioning failed`, before any build step runs.**
-- Seen on 2026-09-15 around 05:31–05:40 UTC: two GitHub-triggered previews for PR #15, plus a direct `vercel deploy` from the CLI.
-- Production (`2ed9f13`) still serves. The project isn't paused. The Vercel status page shows no incident. There were 31 deployments in 24h.
-- The same commit passes `npm run build`, `tsc` and `lint` locally.
-- **Likely an account-level Hobby limit or fair-use throttle on builds.** The ffmpeg render tests used real function CPU earlier.
-- **Please check:** Vercel dashboard → Usage (build minutes, active CPU, fair-use notices) and the failed deployment's page. Retry, or tell me what it says.
-- **Resume:** re-run `scripts/dev/ship.sh feat/paywall "Paywall: upgrade on 402, outcome-priced plans, labelled demo purchase" <body.md>`. The PR already exists; the body is in the PR, so re-save it to a file. Then run `node scripts/dev/ui-paywall-e2e.mjs https://higgsfield-ai-clone.vercel.app "" --mobile`.
+Nothing blocking. Vercel builds resume when the CPU allowance resets (or on upgrade); until then production stays on `2ed9f13`.
 
-## Next action
-Branch `fix/mobile-pass` from `main`: one audit at 390px across every shipped surface, on production:
-- `/`, `/ai/image`, `/ai/video`, `/assets`, `/credits`, `/pricing`, `/login`, `/signup`, plus the modals (preset gallery, image picker, lightbox, paywall).
-- Run all UI e2e scripts with `--mobile` against production; add a shared overflow/tap-target audit script (every button/link ≥ 40px tall on touch, no text under 11px, no horizontal overflow, no clipped fixed elements).
-- **Known candidates:**
-  - composer and sidebar spacing in landscape phones
-  - `/credits` history row wrapping
-  - the lightbox aside on short screens
-  - iOS safe-area bottom padding for the fixed composer (`env(safe-area-inset-bottom)`)
-  - an empty-state error screen (a `not-found` page and an `error.tsx` boundary do not exist yet)
-- Keep it to fixes; no new features. Then the one improvement proposal (ask the owner), then README.
+## Next action (priority order from the owner)
+1. ~~CPU reduction + kill switch~~ done.
+2. `feat/paywall-checkout`:
+   - demo card form (number, expiry, CVC, name; format validation only)
+   - pre-filled obviously fake test number
+   - card fields never leave the browser (not in any request, not stored)
+   - promocode `AHSAN345` (case-insensitive, trimmed) applies the plan discount and grants credits via the ledger with reason `demo_topup`, once-per-plan guard intact; other codes show an invalid-code error
+   - success state, then the header balance updates
+   - update `ui-paywall-e2e`: it drained via 1080p renders, which no longer exist; drain another way (live render + images, or a test-setup ledger adjustment)
+3. `feat/skeletons`: skeleton loaders matching the arriving content's aspect ratio (Explore grids, History, Assets, lightbox, pending card; keep the real progress bar).
+4. `fix/mobile-pass`
+5. README (draft notes in the session scratchpad are gone if the session restarts; the facts are in the PR descriptions #4–#16 and below)
+6. Submission readiness check
+7. Improvement: only if all of the above is done; otherwise skip without asking.
 
 ## Facts worth not re-deriving
+- **Render policy:** `src/lib/render/policy.ts`.
+  - Live renders: guests 1, registered 3; counted by `provider_state.served = 'live'`, which must be merged, not overwritten, on success.
+  - Arc and rack focus are pre-rendered only. The kill switch is the latest `system_events` row of kind `render_mode` (cached 10s); `VIDEO_RENDER_MODE=prerendered` forces it on deploy.
+  - Fallback = job `succeeded` at submit, `cost_tenths 0`, `provider_key 'prerendered'`, asset `source 'sample'` copied from the library `renders/library-<preset>-<16x9|9x16|1x1>-…` (`scripts/seed-render-library.ts`, 42 clips rendered locally).
+  - Caps in DB: `camera_motion` 720p/5s only.
+  - Renderer: no internal 2× upscale, x264 superfast crf 23.
+  - Measured local CPU-s per 720p/5s render: 0.73–0.84 for ordinary moves, arc 1.6, rack focus 1.3 (was 1.66 for push).
 - **Video rendering (verified on Vercel):** `src/lib/render/camera.ts` uses ffmpeg zoompan over a 4× upscaled still.
   - Moves: push, pull, pan, tilt, arc (2D pan plus roll, rendered 10% oversize so rotation never shows corners), handheld (summed sines), rack focus (quarter-res blurred layer with an alpha fade over the sharp frame).
   - Binary: `@ffmpeg-installer/ffmpeg` (optional platform package, no postinstall), set as `serverExternalPackages` and traced into `/api/**` via `outputFileTracingIncludes` in `next.config.ts`.
