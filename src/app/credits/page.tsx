@@ -58,6 +58,15 @@ export default async function CreditsPage() {
         </ul>
       </section>
 
+      {user.kind === "guest" && (
+        <section className="mt-4 flex flex-col gap-3 rounded-2xl border border-accent/30 bg-accent/10 p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-white/85">You&apos;re in a guest session. Create an account to keep your images, videos and credits.</p>
+          <a href="/signup?next=/credits" className="flex h-10 shrink-0 items-center justify-center rounded-lg bg-accent px-4 text-sm font-semibold text-black">
+            Sign up
+          </a>
+        </section>
+      )}
+
       <h2 className="mt-8 mb-3 text-sm font-semibold uppercase tracking-widest text-white/50">History</h2>
       <ol className="divide-y divide-white/5 rounded-2xl border border-white/10">
         {entries.map((e) => (

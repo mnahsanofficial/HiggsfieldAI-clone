@@ -2,11 +2,11 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/video-render` merge (the ship script confirms production serves the merge SHA).
+**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/create-video-presets` merge (the ship script confirms production serves the merge SHA).
 
 **Works end to end now:**
-- **Image:** a stranger opens `/ai/image`, types a prompt and presses Generate. A guest session is created inline, a real FLUX.1 schnell image lands in History, and credits drop 100 → 98. The step-4 checkpoint passed on production: 10/10 at 390px and 1440px.
-- **Video (API only, no UI yet):** `POST /api/jobs {vertical:"video", presetId, inputAssetId, ...}` renders a real ffmpeg camera move over an image into an MP4 in private Blob.
+- **Image:** a stranger opens `/ai/image`, prompt → Generate → a real FLUX.1 schnell image in History, credits 100 → 98 (checkpoint passed on production).
+- **Video:** a stranger opens `/ai/video`, picks a preset from the gallery (14 real preview renders), adds an image (theirs or the library; or "Animate" from any image's lightbox), Generate → a real ffmpeg-rendered MP4 in History, credits 100 → 70, lightbox labelled RENDERED CAMERA MOVE.
 
 ## Plan (13h budget; build started 2026-09-14 ~20:35 UTC; one usage-limit pause during `feat/generation-jobs`)
 
@@ -17,9 +17,9 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 2 | `feat/generation-jobs` | done (PR #8) |
 | 3 | `chore/seed-library` | done (PR #9) |
 | 4 | `feat/create-image` (checkpoint) | done (PR #10); checkpoint passed on production |
-| 5 | `feat/video-render` | done |
-| 6 | `feat/create-video-presets` | **next** |
-| 7 | `feat/assets-library` | todo |
+| 5 | `feat/video-render` | done (PR #11) |
+| 6 | `feat/create-video-presets` | done |
+| 7 | `feat/assets-library` | **next** |
 | 8 | `feat/explore` | todo |
 | 9 | `feat/paywall` | todo |
 | 10 | `fix/mobile-pass` | todo |
@@ -29,13 +29,12 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 Nothing.
 
 ## Next action
-Branch `feat/create-video-presets` from `main`. Build `/ai/video?model=camera_motion` (recon 17):
-- **Left sidebar:** preset card with Change → preset gallery modal (category filter, looping preview videos); ADD IMAGE picker (the user's images plus library seeds, via a new `GET /api/library/images`); duration 5s/10s, aspect, 720p/1080p chips; GenerateButton priced by `priceJob` (5s 720p = ~~53.5~~ 30; 5s 1080p = ~~80~~ 45).
-- **Main pane:** History (video jobs, `<video>` tiles with poster, muted autoplay on hover) + "How it works" (ADD IMAGE → CHOOSE PRESET → GET VIDEO).
-- **Label every video** "RENDERED CAMERA MOVE: not AI-generated video".
-- **Seed preset previews first:** `scripts/seed-preset-previews.ts` renders each of the 14 presets over a seed still with the local ffmpeg, uploads to `renders/` (28 uploads), sets `presets.preview_asset_id`.
-- Lightbox for video. Mobile: sidebar stacks above History.
-- Add "Video" to the header NAV.
+Branch `feat/assets-library` from `main`. Build `/assets` (the Assets nav item; recon §5 says it was never opened, so the layout is an assumption):
+- **One grid for all the user's assets:** images and videos, including examples badged "Example" and samples badged "Sample". Newest first, filter pills All / Images / Videos.
+- **Reuse the lightbox:** Download; Animate for images; Reuse prompt links to `/ai/image?prompt=` (add prompt prefill support to the image studio).
+- **Delete** (soft: `deleted_at`) with confirmation. History should hide deleted assets (`listJobs` already filters `deleted_at`).
+- Add "Assets" to the header NAV. **Phone header has no more room** (Explore/Image/Video + balance chip fill 390px), so make nav items icon + short label, or move Assets into a menu. Check the 390 overflow.
+- Signed out: prompt to try as guest (GuestButton).
 
 ## Facts worth not re-deriving
 - **Video rendering (verified on Vercel):** `src/lib/render/camera.ts` uses ffmpeg zoompan over a 4× upscaled still.
@@ -53,7 +52,7 @@ Branch `feat/create-video-presets` from `main`. Build `/ai/video?model=camera_mo
 - Image jobs: `src/lib/jobs/service.ts` (`submitImageJob`, `runImageJob` via `after()`, `failJob`, `cancelJob`, `retryJob`, `sweepStaleJobs` on GET `/api/jobs`, throttled 30s). `provider_cache` keys on provider + model + prompt + aspect + index.
 - Seed library: `scripts/seed-library.ts` (68 images; idempotent by slug `seed/<section>-NN`). `src/lib/library/examples.ts` (6 example copies per new account; an example = user-owned + `generated` + no job). QA: `scripts/dev/seed-contact-sheet.ts`.
 - Credits are integer tenths; `src/lib/credits/pricing.ts` (shared by UI and server); `src/lib/credits/ledger.ts`.
-- Studio UI: `src/components/create/` (`image-studio`, `image-composer`, `history-grid`, `lightbox`, `use-jobs`). Signed-out Generate → `POST /api/auth/guest`, then retry.
+- Studio UI: `src/components/create/` (`image-studio`, `image-composer`, `video-studio`, `preset-gallery` (`PresetGrid` reusable for Explore "View all presets"), `image-picker`, `history-grid` (image + video tiles), `lightbox` (image/video, Animate link → `/ai/video?image=<assetId>`), `use-jobs`). Preset previews: `scripts/seed-preset-previews.ts` (14 renders over chosen seeds, `presets.preview_asset_id`). Video UI e2e: `node scripts/dev/ui-video-e2e.mjs <base> [shots] [--mobile]` (10 checks). Signed-out Generate → `POST /api/auth/guest`, then retry.
 - **Verification (real services, all clean up after themselves):** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,video}.ts`. `node scripts/dev/api-e2e.mjs <base>` (HTTP as a stranger). `node scripts/dev/ui-image-e2e.mjs <base> [shots] [--mobile]` (UI checkpoint, 10 checks).
 - **Video over HTTP on a protected deployment:** `scripts/dev/video-api-e2e.sh <deployment-url> <image-asset-id> [preset] [res] [dur]`.
 - **On-Vercel testing of preview-only routes:** `npx vercel curl "/api/..." --deployment <preview-url> --yes -- -s` (bypasses deployment protection).
