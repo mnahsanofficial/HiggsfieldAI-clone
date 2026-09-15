@@ -144,7 +144,7 @@ export function VideoStudio({ model, presets, initialPresetId, mine, library, in
             <p className="text-lg font-black uppercase leading-none text-accent">{preset.name}</p>
             <p className="mt-1 text-xs text-white/70">{model.name}</p>
           </div>
-          <button type="button" onClick={() => setModal("preset")} className="absolute right-2 top-2 rounded-lg bg-black/60 px-2.5 py-1.5 text-xs font-medium backdrop-blur hover:bg-black/80">
+          <button type="button" onClick={() => setModal("preset")} className="absolute right-2 top-2 flex h-9 items-center rounded-lg bg-black/60 px-3 text-xs font-medium backdrop-blur hover:bg-black/80">
             ✎ Change
           </button>
         </div>

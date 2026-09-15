@@ -25,7 +25,7 @@ export function PaywallModal({ requiredTenths, balanceTenths, onClose, onSwitche
 
   return (
     <div role="dialog" aria-modal="true" aria-label="Upgrade plan" className="fixed inset-0 z-50 flex items-end bg-black/80 sm:items-center sm:justify-center sm:p-6" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[94vh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0e0e10] p-4 sm:max-w-5xl sm:rounded-3xl sm:p-8">
+      <div onClick={(e) => e.stopPropagation()} className="flex max-h-[94vh] w-full flex-col gap-4 overflow-y-auto rounded-t-3xl border border-white/10 bg-[#0e0e10] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:max-w-5xl sm:rounded-3xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">Upgrade plan to buy credits</h2>

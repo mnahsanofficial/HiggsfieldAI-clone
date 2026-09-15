@@ -21,7 +21,7 @@ export async function AppHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-background/85 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1440px] items-center gap-3 px-4">
-        <Link href="/" className="flex shrink-0 items-center gap-2 font-black tracking-tight">
+        <Link href="/" aria-label="Explore" className="-m-1.5 flex shrink-0 items-center gap-2 p-1.5 font-black tracking-tight">
           <span className="grid h-7 w-7 place-items-center rounded-lg bg-accent text-xs text-black">HF</span>
           <span className="hidden sm:inline">HIGGSFIELD<span className="text-accent"> CLONE</span></span>
         </Link>

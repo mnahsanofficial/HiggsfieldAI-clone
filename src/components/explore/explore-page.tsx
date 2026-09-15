@@ -37,14 +37,14 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
             user.kind === "guest" ? (
               <>
                 <span>Guest session · {formatCredits(user.creditBalanceTenths)} credits left.</span>
-                <Link href="/signup" className="rounded-md bg-black px-2.5 py-1 text-xs font-semibold text-accent">
+                <Link href="/signup" className="inline-flex min-h-8 items-center rounded-md bg-black px-2.5 text-xs font-semibold text-accent">
                   Keep your work
                 </Link>
               </>
             ) : (
               <>
                 <span>{formatCredits(user.creditBalanceTenths)} credits ready to spend.</span>
-                <Link href="/ai/video" className="rounded-md bg-black px-2.5 py-1 text-xs font-semibold text-accent">
+                <Link href="/ai/video" className="inline-flex min-h-8 items-center rounded-md bg-black px-2.5 text-xs font-semibold text-accent">
                   Direct a shot
                 </Link>
               </>
@@ -52,7 +52,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
           ) : (
             <>
               <span>100 free credits. No email, no card.</span>
-              <Link href="/ai/image" className="rounded-md bg-black px-2.5 py-1 text-xs font-semibold text-accent">
+              <Link href="/ai/image" className="inline-flex min-h-8 items-center rounded-md bg-black px-2.5 text-xs font-semibold text-accent">
                 Start creating
               </Link>
             </>
@@ -250,7 +250,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
             { label: "Assets", href: "/assets" },
             { label: "Credits", href: user ? "/credits" : "/signup" },
           ].map((tag) => (
-            <Link key={tag.label} href={tag.href} className="rounded-md bg-white/5 px-2.5 py-1 text-xs text-white/60 hover:bg-white/10 hover:text-white">
+            <Link key={tag.label} href={tag.href} className="flex min-h-9 items-center rounded-md bg-white/5 px-3 text-xs text-white/60 hover:bg-white/10 hover:text-white sm:min-h-7 sm:px-2.5">
               {tag.label}
             </Link>
           ))}
@@ -288,10 +288,10 @@ function FooterCol({ title, links }: { title: string; links: [string, string][] 
   return (
     <div>
       <p className="text-xs text-black/50">{title}</p>
-      <ul className="mt-2 space-y-1.5 text-sm">
+      <ul className="mt-1 text-sm sm:mt-2 sm:space-y-1.5">
         {links.map(([label, href]) => (
           <li key={label}>
-            <Link href={href} className="hover:underline">
+            <Link href={href} className="inline-block py-2 hover:underline sm:py-0">
               {label}
             </Link>
           </li>

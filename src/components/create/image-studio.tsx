@@ -119,7 +119,7 @@ export function ImageStudio({ models, initialModelId, initialPrompt = "", initia
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-background via-background/90 to-transparent px-3 pb-3 pt-8 sm:px-4 sm:pb-5">
+      <div className="fixed inset-x-0 bottom-0 z-30 bg-gradient-to-t from-background via-background/90 to-transparent px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-8 sm:px-4 sm:pb-5">
         <div className="mx-auto max-w-4xl">
           <ImageComposer
             models={models}
