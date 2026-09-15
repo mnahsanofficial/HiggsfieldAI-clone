@@ -2,11 +2,12 @@
 
 _Rewritten at the end of every branch. Resume from **Next action**._
 
-**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/create-video-presets` merge (the ship script confirms production serves the merge SHA).
+**Production:** https://higgsfield-ai-clone.vercel.app: green as of the `feat/assets-library` merge (the ship script confirms production serves the merge SHA).
 
 **Works end to end now:**
 - **Image:** a stranger opens `/ai/image`, prompt → Generate → a real FLUX.1 schnell image in History, credits 100 → 98 (checkpoint passed on production).
-- **Video:** a stranger opens `/ai/video`, picks a preset from the gallery (14 real preview renders), adds an image (theirs or the library; or "Animate" from any image's lightbox), Generate → a real ffmpeg-rendered MP4 in History, credits 100 → 70, lightbox labelled RENDERED CAMERA MOVE.
+- **Video:** a stranger opens `/ai/video`, picks a preset from the gallery (14 real preview renders), adds an image (theirs or the library; or "Animate" from any image's lightbox), Generate → a real ffmpeg-rendered MP4 in History, credits 100 → 70, lightbox labelled RENDERED CAMERA MOVE (passed 10/10 on production at 390px).
+- **Assets:** `/assets` shows everything the user made (examples badged), filter by type; lightbox Download / Animate / Reuse (prefills `/ai/image?prompt=`) / Delete (confirm; soft delete).
 
 ## Plan (13h budget; build started 2026-09-14 ~20:35 UTC; one usage-limit pause during `feat/generation-jobs`)
 
@@ -18,9 +19,9 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 | 3 | `chore/seed-library` | done (PR #9) |
 | 4 | `feat/create-image` (checkpoint) | done (PR #10); checkpoint passed on production |
 | 5 | `feat/video-render` | done (PR #11) |
-| 6 | `feat/create-video-presets` | done |
-| 7 | `feat/assets-library` | **next** |
-| 8 | `feat/explore` | todo |
+| 6 | `feat/create-video-presets` | done (PR #12) |
+| 7 | `feat/assets-library` | done |
+| 8 | `feat/explore` | **next** |
 | 9 | `feat/paywall` | todo |
 | 10 | `fix/mobile-pass` | todo |
 | 11 | README | todo |
@@ -29,12 +30,19 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 Nothing.
 
 ## Next action
-Branch `feat/assets-library` from `main`. Build `/assets` (the Assets nav item; recon §5 says it was never opened, so the layout is an assumption):
-- **One grid for all the user's assets:** images and videos, including examples badged "Example" and samples badged "Sample". Newest first, filter pills All / Images / Videos.
-- **Reuse the lightbox:** Download; Animate for images; Reuse prompt links to `/ai/image?prompt=` (add prompt prefill support to the image studio).
-- **Delete** (soft: `deleted_at`) with confirmation. History should hide deleted assets (`listJobs` already filters `deleted_at`).
-- Add "Assets" to the header NAV. **Phone header has no more room** (Explore/Image/Video + balance chip fill 390px), so make nav items icon + short label, or move Assets into a menu. Check the 390 overflow.
-- Signed out: prompt to try as guest (GuestButton).
+Branch `feat/explore` from `main`. Replace the placeholder home `/` with Explore (recon 19/22; notes corrected):
+- **One page component, five auth slots:**
+  - top strip: signed out "Try free as a guest", signed in credits/sign-up
+  - header right cluster (already auth-aware)
+  - hero promo card: signed out sign-up/guest card, signed in plan card linking to `/credits`
+  - Genjutsu badge equivalent → a "NEW" badge for Video presets
+  - section CTA wording
+- **Hero:** row of 4 feature cards (Create Image, Camera Presets, Assets, Credits) with seed media; 6 quick links (the models and studios we built).
+- **About 8 media-grid sections** (title + subtitle + grid + View-all pill) built from seeds: Visual Effects/Camera Presets (preset preview videos → opens `/ai/video?preset=`), Cinematic (cinema), Portraits (portrait), Street (street), Product (product), Worlds (fantasy), Nature (nature).
+- **Banners and the community grid (poster seeds) stay as visual blocks.** Any CTA must go somewhere real, or there's no CTA. Dead links are the failure, not dead pixels. If a section can't look right without its CTA, cut it and say which.
+- Footer (lime) with only real links.
+- Tiles: images open `/ai/image?prompt=<seed prompt>`; preset videos open `/ai/video?preset=<id>`.
+- Mobile-first at 390; the explore page must be dense on first load.
 
 ## Facts worth not re-deriving
 - **Video rendering (verified on Vercel):** `src/lib/render/camera.ts` uses ffmpeg zoompan over a 4× upscaled still.
@@ -52,6 +60,7 @@ Branch `feat/assets-library` from `main`. Build `/assets` (the Assets nav item; 
 - Image jobs: `src/lib/jobs/service.ts` (`submitImageJob`, `runImageJob` via `after()`, `failJob`, `cancelJob`, `retryJob`, `sweepStaleJobs` on GET `/api/jobs`, throttled 30s). `provider_cache` keys on provider + model + prompt + aspect + index.
 - Seed library: `scripts/seed-library.ts` (68 images; idempotent by slug `seed/<section>-NN`). `src/lib/library/examples.ts` (6 example copies per new account; an example = user-owned + `generated` + no job). QA: `scripts/dev/seed-contact-sheet.ts`.
 - Credits are integer tenths; `src/lib/credits/pricing.ts` (shared by UI and server); `src/lib/credits/ledger.ts`.
+- Assets: `src/app/assets/page.tsx` plus `src/components/library/asset-library.tsx`; `DELETE /api/assets/[id]` (soft delete). UI e2e: `node scripts/dev/ui-assets-e2e.mjs <base> [shots] [--mobile]` (11 checks incl. image decode). Guest limit per IP: `GUESTS_PER_IP_PER_HOUR` (env `GUEST_LIMIT_PER_HOUR`, default 30; `.env.local` sets 1000 for local test runs). Header NAV: Explore is `desktopOnly` (the logo goes home on phones).
 - Studio UI: `src/components/create/` (`image-studio`, `image-composer`, `video-studio`, `preset-gallery` (`PresetGrid` reusable for Explore "View all presets"), `image-picker`, `history-grid` (image + video tiles), `lightbox` (image/video, Animate link → `/ai/video?image=<assetId>`), `use-jobs`). Preset previews: `scripts/seed-preset-previews.ts` (14 renders over chosen seeds, `presets.preview_asset_id`). Video UI e2e: `node scripts/dev/ui-video-e2e.mjs <base> [shots] [--mobile]` (10 checks). Signed-out Generate → `POST /api/auth/guest`, then retry.
 - **Verification (real services, all clean up after themselves):** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,video}.ts`. `node scripts/dev/api-e2e.mjs <base>` (HTTP as a stranger). `node scripts/dev/ui-image-e2e.mjs <base> [shots] [--mobile]` (UI checkpoint, 10 checks).
 - **Video over HTTP on a protected deployment:** `scripts/dev/video-api-e2e.sh <deployment-url> <image-asset-id> [preset] [res] [dur]`.
