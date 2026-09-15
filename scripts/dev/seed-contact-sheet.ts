@@ -2,7 +2,7 @@
 // frames by pixel variance, and writes a labelled contact sheet for visual review.
 // run: npx tsx --conditions react-server scripts/dev/seed-contact-sheet.ts <out.jpg>
 import { loadEnvConfig } from "@next/env";
-import sharp from "sharp";
+import sharp, { type OverlayOptions } from "sharp";
 
 loadEnvConfig(process.cwd());
 
@@ -21,7 +21,7 @@ async function main() {
 
   const TILE = 200;
   const COLS = 10;
-  const tiles: sharp.OverlayOptions[] = [];
+  const tiles: OverlayOptions[] = [];
   const suspicious: string[] = [];
   for (const [i, s] of seeds.entries()) {
     const media = await readMedia(s.url.replace(/^\/media\//, ""));

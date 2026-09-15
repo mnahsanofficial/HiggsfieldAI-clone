@@ -5,6 +5,11 @@
 set -u
 cd "$(git rev-parse --show-toplevel)"
 BR=$1; TITLE=$2; BODY=$3
+# Same gates Vercel's build applies (next build typechecks scripts/ too), before anything is pushed.
+npm run build >/tmp/ship-build.log 2>&1 || { echo "BUILD FAILED, not shipping"; tail -20 /tmp/ship-build.log; exit 1; }
+npx tsc --noEmit || { echo "TYPECHECK FAILED, not shipping"; exit 1; }
+npm run lint --silent || { echo "LINT FAILED, not shipping"; exit 1; }
+git push -q origin "$BR"
 gh pr view "$BR" >/dev/null 2>&1 || gh pr create --base main --head "$BR" --title "$TITLE" --body-file "$BODY" | tail -1
 sleep 20
 S=""
