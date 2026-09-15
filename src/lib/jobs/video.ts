@@ -1,11 +1,12 @@
 import "server-only";
-import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assets, generationJobs, type JobParams, models, plans, presets, users } from "@/db/schema";
-import { chargeForJob } from "@/lib/credits/ledger";
+import { chargeForJob, type Tx } from "@/lib/credits/ledger";
 import { priceJob } from "@/lib/credits/pricing";
 import { estimateRenderMs, renderDeadline, RESOLUTION_DIMS } from "@/lib/render/budget";
 import { RenderBudgetError, renderCameraMove } from "@/lib/render/camera";
+import { decideRender, FALLBACK_COPY, type FallbackReason } from "@/lib/render/policy";
 import { readMedia, StorageCapReachedError, uploadMedia } from "@/lib/storage";
 import { failJob, JobInputError, stillProcessing } from "./service";
 
@@ -25,7 +26,7 @@ export type VideoSubmitInput = {
   retryOfJobId?: string | null;
 };
 
-export async function submitVideoJob(userId: string, input: VideoSubmitInput): Promise<{ jobId: string; costTenths: number }> {
+export async function submitVideoJob(userId: string, input: VideoSubmitInput): Promise<{ jobId: string; costTenths: number; live: boolean; reason?: FallbackReason }> {
   const [row] = await db
     .select({ model: models, planRank: plans.rank })
     .from(models)
@@ -61,7 +62,11 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
   const params: JobParams = { aspect: input.aspect, resolution: input.resolution, batchSize: 1, durationS: input.durationS };
   const { costTenths } = priceJob(model.pricing, params);
 
-  const jobId = await db.transaction(async (tx) => {
+  return db.transaction(async (tx) => {
+    // Lock the user row so two quick submits can't both claim the last live render.
+    const locked = await tx.execute<{ kind: "guest" | "registered" }>(sql`SELECT kind FROM users WHERE id = ${userId} FOR UPDATE`);
+    const kind = locked.rows[0]?.kind ?? "guest";
+
     const [{ active }] = await tx
       .select({ active: sql<number>`count(*)::int` })
       .from(generationJobs)
@@ -69,6 +74,49 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
     if (active >= MAX_ACTIVE_JOBS_PER_USER) {
       throw new JobInputError(`You can run ${MAX_ACTIVE_JOBS_PER_USER} generations at once. Wait for one to finish.`, 429, "too_many_active");
     }
+
+    const decision = await decideRender(userId, kind, preset.motion.type, tx);
+    if (!decision.live) {
+      // Serve a pre-rendered clip of the chosen preset: never charged, labelled as an example.
+      const clip = await findPrerenderedClip(tx, preset.id, input.aspect);
+      if (!clip) throw new JobInputError("No pre-rendered example is available for this preset yet.", 503, "no_prerendered_clip");
+      const [job] = await tx
+        .insert(generationJobs)
+        .values({
+          userId,
+          vertical: "video",
+          modelId: model.id,
+          presetId: preset.id,
+          inputAssetId: image.id,
+          prompt: `${preset.name}: pre-rendered example`,
+          params,
+          costTenths: 0,
+          status: "succeeded",
+          progress: 100,
+          providerKey: "prerendered",
+          providerState: { served: "prerendered", reason: decision.reason, clipAssetId: clip.id },
+          startedAt: sql`now()`,
+          finishedAt: sql`now()`,
+          retryOfJobId: input.retryOfJobId ?? null,
+        })
+        .returning({ id: generationJobs.id });
+      await tx.insert(assets).values({
+        userId,
+        jobId: job.id,
+        kind: "video",
+        source: "sample",
+        url: clip.url,
+        posterUrl: clip.posterUrl,
+        width: clip.width,
+        height: clip.height,
+        durationMs: clip.durationMs,
+        modelId: model.id,
+        presetId: preset.id,
+        prompt: `${preset.name}: pre-rendered example (${FALLBACK_COPY[decision.reason]})`,
+      });
+      return { jobId: job.id, costTenths: 0, live: false as const, reason: decision.reason };
+    }
+
     const [job] = await tx
       .insert(generationJobs)
       .values({
@@ -81,13 +129,29 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
         params,
         costTenths,
         providerKey: model.providerKey,
+        providerState: { served: "live" },
         retryOfJobId: input.retryOfJobId ?? null,
       })
       .returning({ id: generationJobs.id });
     await chargeForJob(tx, userId, job.id, costTenths);
-    return job.id;
+    return { jobId: job.id, costTenths, live: true as const };
   });
-  return { jobId, costTenths };
+}
+
+// Pre-rendered clips live under renders/library-<preset>-<aspect>-... (scripts/seed-render-library.ts).
+// Prefer the chosen preset and aspect, then the same preset in any aspect, then General.
+async function findPrerenderedClip(tx: Tx, presetId: string, aspect: string) {
+  const slug = aspect.replace(":", "x");
+  const candidates = [`/media/renders/library-${presetId}-${slug}-%`, `/media/renders/library-${presetId}-%`, `/media/renders/library-general-${slug}-%`];
+  for (const pattern of candidates) {
+    const [clip] = await tx
+      .select({ id: assets.id, url: assets.url, posterUrl: assets.posterUrl, width: assets.width, height: assets.height, durationMs: assets.durationMs })
+      .from(assets)
+      .where(and(isNull(assets.userId), eq(assets.kind, "video"), like(assets.url, pattern), sql`${assets.url} NOT LIKE '%-poster%'`))
+      .limit(1);
+    if (clip) return clip;
+  }
+  return null;
 }
 
 // Runs a queued video job. `invokedAtMs` is when the function invocation began (the POST that
@@ -143,7 +207,8 @@ export async function runVideoJob(jobId: string, invokedAtMs = Date.now()): Prom
     await db.transaction(async (tx) => {
       const [done] = await tx
         .update(generationJobs)
-        .set({ status: "succeeded", progress: 100, finishedAt: sql`now()`, heartbeatAt: sql`now()`, providerState: { renderMs: out.renderMs, estimateMs: Math.round(estimate) } })
+        .set({ status: "succeeded", progress: 100, finishedAt: sql`now()`, heartbeatAt: sql`now()`, // Merge, don't replace: `served: "live"` must survive, it's what the live-render cap counts.
+          providerState: sql`coalesce(${generationJobs.providerState}, '{}'::jsonb) || ${JSON.stringify({ renderMs: out.renderMs, estimateMs: Math.round(estimate) })}::jsonb` })
         .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, "processing")))
         .returning({ id: generationJobs.id });
       if (!done) return;

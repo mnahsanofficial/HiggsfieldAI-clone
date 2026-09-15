@@ -13,8 +13,9 @@ export async function POST(_request: Request, { params }: RouteContext<"/api/job
   if (!user) return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
   const { id } = await params;
   try {
-    const { jobId, vertical } = await retryJob(user.id, id);
-    after(() => (vertical === "video" ? runVideoJob(jobId, invokedAt) : runImageJob(jobId)));
+    const { jobId, vertical, live } = await retryJob(user.id, id);
+    if (vertical === "image") after(() => runImageJob(jobId));
+    else if (live) after(() => runVideoJob(jobId, invokedAt));
     const [job] = await listJobs(user.id, { ids: [jobId] });
     return NextResponse.json({ job, balanceTenths: await balanceOf(user.id) }, { status: 201 });
   } catch (err) {

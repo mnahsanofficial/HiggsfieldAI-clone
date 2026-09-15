@@ -225,7 +225,7 @@ export async function cancelJob(userId: string, jobId: string): Promise<boolean>
   });
 }
 
-export async function retryJob(userId: string, jobId: string): Promise<{ jobId: string; vertical: "image" | "video" }> {
+export async function retryJob(userId: string, jobId: string): Promise<{ jobId: string; vertical: "image" | "video"; live: boolean }> {
   const [old] = await db
     .select()
     .from(generationJobs)
@@ -243,10 +243,10 @@ export async function retryJob(userId: string, jobId: string): Promise<{ jobId: 
       durationS: old.params.durationS ?? 5,
       retryOfJobId: old.id,
     });
-    return { jobId: r.jobId, vertical: "video" };
+    return { jobId: r.jobId, vertical: "video", live: r.live };
   }
   const r = await submitImageJob(userId, { modelId: old.modelId, prompt: old.prompt, ...old.params, retryOfJobId: old.id });
-  return { jobId: r.jobId, vertical: "image" };
+  return { jobId: r.jobId, vertical: "image", live: true };
 }
 
 // Fails and refunds jobs whose worker vanished (function killed, deploy, crash).
