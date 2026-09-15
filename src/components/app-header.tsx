@@ -6,7 +6,10 @@ import { CreditGlyph } from "./credits/credit-glyph";
 
 // Only routes that exist are listed; items are added as their surfaces ship, so the nav
 // never contains a dead link.
-const NAV: { href: string; label: string }[] = [{ href: "/", label: "Explore" }];
+const NAV: { href: string; label: string }[] = [
+  { href: "/", label: "Explore" },
+  { href: "/ai/image", label: "Image" },
+];
 
 export async function AppHeader() {
   const user = await getCurrentUser();
