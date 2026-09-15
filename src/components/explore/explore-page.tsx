@@ -5,6 +5,7 @@ import type { CurrentUser } from "@/lib/auth/current-user";
 import { formatCredits } from "@/lib/credits/format";
 import { AutoVideo } from "./auto-video";
 import { type ExploreTile, MediaSection } from "./section";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 
 export type ExploreData = {
   user: CurrentUser | null;
@@ -68,8 +69,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
                 {h.media?.kind === "video" ? (
                   <AutoVideo src={h.media.url} poster={h.media.posterUrl} className="h-full w-full object-cover" />
                 ) : (
-                  // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-                  h.media && <img src={h.media.url} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                  h.media && <SkeletonImg src={h.media.url} alt="" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
                 )}
               </div>
               <p className="mt-2 text-sm font-black uppercase tracking-tight">{h.title}</p>
@@ -83,8 +83,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
       <section className="mx-auto grid w-full max-w-[1440px] gap-3 px-3 sm:px-4 lg:grid-cols-[1.1fr_2fr]">
         <div className="relative overflow-hidden rounded-2xl border border-white/10 p-5 sm:p-6">
           {sections.fantasy[5] && (
-            // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-            <img src={sections.fantasy[5].url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" />
+            <SkeletonImg src={sections.fantasy[5].url} alt="" className="absolute inset-0 h-full w-full object-cover opacity-35" />
           )}
           <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/60 to-transparent" />
           <div className="relative flex h-full flex-col gap-3">
@@ -180,8 +179,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
           {sections.poster.map((t, i) => (
             <Link key={t.id} href={t.href} className="group overflow-hidden rounded-xl border border-white/10 bg-[#121214]">
               <div className="aspect-video overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element -- immutable /media route */}
-                <img src={t.url} alt={t.prompt ?? ""} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                <SkeletonImg src={t.url} alt={t.prompt ?? ""} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
               </div>
               <div className="flex items-center justify-between gap-2 p-2.5">
                 <span className="min-w-0 truncate text-xs text-white/80">{POSTER_TITLES[i] ?? "Untitled"} · by Higgsfield clone</span>
@@ -210,8 +208,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
           </div>
           <div className="grid grid-cols-3 gap-2">
             {sections.street.slice(0, 3).map((t) => (
-              // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-              <img key={t.id} src={t.url} alt="" loading="lazy" className="aspect-[9/16] w-full rounded-xl object-cover" />
+              <SkeletonImg key={t.id} src={t.url} alt="" loading="lazy" className="aspect-[9/16] w-full rounded-xl object-cover" />
             ))}
           </div>
         </div>
@@ -224,8 +221,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
         <div className="relative overflow-hidden rounded-3xl border border-white/10">
           <div className="flex gap-2 p-2 opacity-60">
             {sections.fantasy.slice(2, 7).map((t) => (
-              // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-              <img key={t.id} src={t.url} alt="" loading="lazy" className="h-40 w-1/3 shrink-0 rounded-2xl object-cover sm:h-56 sm:w-1/5" />
+              <SkeletonImg key={t.id} src={t.url} alt="" loading="lazy" className="h-40 w-1/3 shrink-0 rounded-2xl object-cover sm:h-56 sm:w-1/5" />
             ))}
           </div>
           <div className="absolute inset-0 flex flex-col items-start justify-center bg-gradient-to-r from-black/90 via-black/60 to-transparent p-6 sm:p-10">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { SkeletonBlock } from "@/components/media/skeleton-media";
 import { formatCredits } from "@/lib/credits/format";
 import { type PlanCardData, PlanCards } from "./plan-cards";
 
@@ -48,7 +49,7 @@ export function PaywallModal({ requiredTenths, balanceTenths, onClose, onSwitche
         ) : (
           <div className="grid gap-3 md:grid-cols-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-96 animate-pulse rounded-2xl bg-white/5" />
+              <SkeletonBlock key={i} className="h-[26rem] rounded-2xl" />
             ))}
           </div>
         )}

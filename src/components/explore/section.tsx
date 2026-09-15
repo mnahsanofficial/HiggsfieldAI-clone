@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AutoVideo } from "./auto-video";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 
 export type ExploreTile = {
   id: string;
@@ -56,8 +57,7 @@ export function MediaSection({
               {t.kind === "video" ? (
                 <AutoVideo src={t.url} poster={t.posterUrl} className="h-full w-full object-cover" />
               ) : (
-                // eslint-disable-next-line @next/next/no-img-element -- immutable /media route
-                <img src={t.url} alt={t.prompt ?? ""} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
+                <SkeletonImg src={t.url} alt={t.prompt ?? ""} loading="lazy" className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]" />
               )}
               {t.label && (
                 <span className="absolute left-2 top-2 rounded-md bg-black/60 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide backdrop-blur">{t.label}</span>

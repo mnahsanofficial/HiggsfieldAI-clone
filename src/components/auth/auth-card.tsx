@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { type AuthFormState, signInAction, signUpAction } from "@/app/auth/actions";
 import { GuestButton } from "./guest-button";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 
 type Props = {
   hero?: { url: string; prompt: string | null } | null;
@@ -24,8 +25,7 @@ export function AuthCard({ hero, mode, next, isGuest }: Props) {
       {/* Media panel, like the reference's signup modal: a real FLUX generation from the seed library. */}
       <div className="relative hidden min-h-[520px] overflow-hidden bg-[radial-gradient(120%_80%_at_20%_10%,#3b4a12_0%,#141416_55%)] md:block">
         {hero && (
-          // eslint-disable-next-line @next/next/no-img-element -- served from our own immutable /media route
-          <img src={hero.url} alt={hero.prompt ?? "Generated image"} className="absolute inset-0 h-full w-full object-cover" />
+          <SkeletonImg src={hero.url} alt={hero.prompt ?? "Generated image"} className="absolute inset-0 h-full w-full object-cover" />
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/10 to-transparent" />
         <div className="absolute inset-x-6 bottom-6">
