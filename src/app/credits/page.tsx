@@ -49,6 +49,9 @@ export default async function CreditsPage() {
           <CreditGlyph className="h-7 w-7 text-accent" />
           {formatCredits(user.creditBalanceTenths)}
         </p>
+        <a href="/pricing" className="mt-4 inline-flex h-10 items-center rounded-lg bg-accent px-4 text-sm font-semibold text-black">
+          Get more credits
+        </a>
         <ul className="mt-4 space-y-1 text-sm text-white/70">
           {outcomes.map((o) => (
             <li key={o.id}>
