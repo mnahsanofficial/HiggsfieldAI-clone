@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CreditGlyph } from "@/components/credits/credit-glyph";
 import { formatCredits } from "@/lib/credits/format";
+import { DemoCheckout } from "./demo-checkout";
 
 export type PlanCardData = {
   id: string;
@@ -24,34 +25,49 @@ const ACCENT: Record<string, { card: string; cta: string }> = {
 const dollars = (cents: number) => `$${(cents / 100).toFixed(cents % 100 ? 2 : 0)}`;
 
 // Plan cards (recon 23): credits per month translated into outcomes, annual price with the
-// monthly price struck through, one CTA per tier. Purchasing is a labelled demo: payments are
-// cut from this build, so a plan switch grants its credits and takes no money.
+// monthly price struck through, one CTA per tier. The CTA opens a labelled demo checkout: payments
+// are cut from this build, so completing it grants the plan's credits and takes no money.
 export function PlanCards({ plans, currentPlanId, signedIn, onSwitched }: { plans: PlanCardData[]; currentPlanId: string | null; signedIn: boolean; onSwitched?: (planName: string, grantedTenths: number) => void }) {
   const router = useRouter();
   const [annual, setAnnual] = useState(true);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [checkout, setCheckout] = useState<PlanCardData | null>(null);
+  const [done, setDone] = useState<{ plan: PlanCardData; changed: boolean; grantedTenths: number; balanceTenths: number } | null>(null);
 
-  async function choose(plan: PlanCardData) {
-    setError(null);
-    setBusy(plan.id);
-    try {
-      if (!signedIn) {
-        const g = await fetch("/api/auth/guest", { method: "POST" });
-        if (!g.ok) throw new Error((await g.json()).error ?? "Couldn't start a guest session.");
-      }
-      const res = await fetch("/api/plans", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ planId: plan.id }) });
-      const body = await res.json();
-      if (!res.ok) throw new Error(body.message ?? "Couldn't switch plan.");
-      setDone(body.changed ? `${plan.name} is active: +${formatCredits(body.grantedTenths)} credits (demo, no payment taken).` : `You're already on ${plan.name}.`);
-      onSwitched?.(plan.name, body.grantedTenths);
-      router.refresh();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
-    } finally {
-      setBusy(null);
-    }
+  if (checkout) {
+    return (
+      <DemoCheckout
+        plan={checkout}
+        annual={annual}
+        signedIn={signedIn}
+        onBack={() => setCheckout(null)}
+        onSuccess={(result) => {
+          setDone({ plan: checkout, ...result });
+          setCheckout(null);
+          onSwitched?.(checkout.name, result.grantedTenths);
+          router.refresh(); // the header balance is server-rendered
+        }}
+      />
+    );
+  }
+
+  if (done) {
+    return (
+      <div role="status" className="mx-auto flex w-full max-w-md flex-col items-center gap-3 rounded-2xl border border-accent/30 bg-[#141416] p-6 text-center">
+        <div className="grid h-12 w-12 place-items-center rounded-full bg-accent text-2xl font-black text-black">✓</div>
+        <p className="text-2xl font-black uppercase tracking-tight">{done.changed ? `${done.plan.name} is active` : `You're already on ${done.plan.name}`}</p>
+        {done.grantedTenths > 0 ? (
+          <p className="flex items-center gap-1.5 text-lg font-semibold text-accent">
+            +{formatCredits(done.grantedTenths)} credits <CreditGlyph className="h-4 w-4" />
+          </p>
+        ) : (
+          done.changed && <p className="text-sm text-white/60">{done.plan.name}&apos;s credits were already added to this account once, so none were added again.</p>
+        )}
+        <p className="text-sm text-white/55">Balance: {formatCredits(done.balanceTenths)} credits. Demo checkout, no payment taken.</p>
+        <button type="button" onClick={() => setDone(null)} className="mt-1 h-10 rounded-lg bg-white/10 px-4 text-sm font-semibold hover:bg-white/15">
+          Back to plans
+        </button>
+      </div>
+    );
   }
 
   return (
@@ -99,11 +115,11 @@ export function PlanCards({ plans, currentPlanId, signedIn, onSwitched }: { plan
               </p>
               <button
                 type="button"
-                disabled={busy !== null || current}
-                onClick={() => choose(plan)}
+                disabled={current}
+                onClick={() => setCheckout(plan)}
                 className={`h-12 rounded-xl font-semibold transition disabled:opacity-60 ${style.cta}`}
               >
-                {current ? "Current plan" : busy === plan.id ? "Switching…" : `Get ${plan.name} · demo`}
+                {current ? "Current plan" : `Get ${plan.name}`}
               </button>
               <p className="-mt-2 text-center text-xs text-white/45">
                 {annual && saving > 0 ? `Save ${dollars(saving)} compared to monthly · ` : plan.id === "basic" && annual ? "No difference compared to monthly · " : ""}
@@ -114,18 +130,8 @@ export function PlanCards({ plans, currentPlanId, signedIn, onSwitched }: { plan
         })}
       </div>
 
-      {done && (
-        <p role="status" className="rounded-xl bg-accent/10 px-4 py-3 text-center text-sm text-accent">
-          {done}
-        </p>
-      )}
-      {error && (
-        <p role="alert" className="text-center text-sm text-red-400">
-          {error}
-        </p>
-      )}
       <p className="text-center text-xs text-white/40">
-        Payments aren&apos;t part of this build. Choosing a plan is a demo: it switches your plan and adds that plan&apos;s monthly credits, recorded in your credit history as &quot;demo: no payment taken&quot;.
+        Payments aren&apos;t part of this build. Checkout is a labelled demo with a test card: it switches your plan and adds that plan&apos;s monthly credits once, recorded in your credit history as &quot;no payment taken&quot;.
       </p>
     </div>
   );

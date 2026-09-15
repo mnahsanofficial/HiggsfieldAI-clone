@@ -6,6 +6,7 @@ import { type PlanCardData, PlanCards } from "./plan-cards";
 
 // "UPGRADE PLAN TO BUY CREDITS" (recon 23), opened when a generation is refused for credits.
 export function PaywallModal({ requiredTenths, balanceTenths, onClose, onSwitched }: { requiredTenths?: number; balanceTenths?: number; onClose: () => void; onSwitched?: () => void }) {
+  const [switched, setSwitched] = useState(false);
   const [data, setData] = useState<{ plans: PlanCardData[]; currentPlanId: string | null } | null>(null);
 
   useEffect(() => {
@@ -28,7 +29,9 @@ export function PaywallModal({ requiredTenths, balanceTenths, onClose, onSwitche
           <div>
             <h2 className="text-2xl font-black uppercase tracking-tight sm:text-3xl">Upgrade plan to buy credits</h2>
             <p className="mt-1 text-sm text-white/55">
-              {requiredTenths !== undefined && balanceTenths !== undefined
+              {switched
+                ? "Your new credits are ready. Close this and press Generate again."
+                : requiredTenths !== undefined && balanceTenths !== undefined
                 ? `This generation costs ${formatCredits(requiredTenths)} credits and you have ${formatCredits(balanceTenths)}. Nothing was charged.`
                 : "Choose a plan for more credits every month."}
             </p>
@@ -38,7 +41,10 @@ export function PaywallModal({ requiredTenths, balanceTenths, onClose, onSwitche
           </button>
         </div>
         {data ? (
-          <PlanCards plans={data.plans} currentPlanId={data.currentPlanId} signedIn onSwitched={() => onSwitched?.()} />
+          <PlanCards plans={data.plans} currentPlanId={data.currentPlanId} signedIn onSwitched={() => {
+              setSwitched(true);
+              onSwitched?.();
+            }} />
         ) : (
           <div className="grid gap-3 md:grid-cols-3">
             {[0, 1, 2].map((i) => (

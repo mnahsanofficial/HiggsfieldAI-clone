@@ -32,8 +32,8 @@ async function main() {
     check("switch to Pro grants 600 credits", r1.changed && r1.grantedTenths === 6000 && (await bal(u)).b === 7000 && (await bal(u)).p === "pro");
     const r2 = await billing.switchPlanDemo(u, "pro");
     check("switching to the same plan again grants nothing", !r2.changed && (await bal(u)).b === 7000);
-    const [note] = await db.select({ note: S.creditLedger.note }).from(S.creditLedger).where(sql`${S.creditLedger.userId} = ${u} AND ${S.creditLedger.reason} = 'plan_grant'`);
-    check("ledger note says no payment was taken", note?.note === "Pro plan (demo: no payment taken)", note?.note ?? "");
+    const [note] = await db.select({ note: S.creditLedger.note }).from(S.creditLedger).where(sql`${S.creditLedger.userId} = ${u} AND ${S.creditLedger.reason} = 'demo_topup'`);
+    check("granted as demo_topup; note says demo checkout, no payment taken", note?.note === "Pro plan: demo checkout, no payment taken", note?.note ?? "");
 
     // The abuse loop: Pro -> Basic -> Pro must not mint credits again.
     const basic = await billing.switchPlanDemo(u, "basic");
@@ -52,7 +52,27 @@ async function main() {
       bad = e instanceof billing.PlanError;
     }
     check("free/unknown plan refused", bad);
-    for (const id of [u, v]) {
+    // Promo code: case-insensitive and trimmed; any other code is refused before anything changes.
+    const w = await newUser();
+    let invalid = false;
+    try {
+      await billing.switchPlanDemo(w, "pro", { promoCode: "AHSAN346" });
+    } catch (e) {
+      invalid = e instanceof billing.PlanError && /promo code/.test(e.message);
+    }
+    check("invalid promo code refused, plan and balance unchanged", invalid && (await bal(w)).b === 1000 && (await bal(w)).p === "free", `plan ${(await bal(w)).p}`);
+    const p1 = await billing.switchPlanDemo(w, "pro", { promoCode: "  ahsan345 " });
+    const [pn] = await db.select({ note: S.creditLedger.note, reason: S.creditLedger.reason }).from(S.creditLedger).where(sql`${S.creditLedger.userId} = ${w} AND ${S.creditLedger.deltaTenths} = 6000`);
+    check("'  ahsan345 ' applies AHSAN345 (100% off) and grants 600 via demo_topup", p1.promo?.code === "AHSAN345" && p1.promo.percentOff === 100 && p1.grantedTenths === 6000 && pn?.reason === "demo_topup" && pn.note === "Pro plan: demo checkout with AHSAN345 (100% off), no payment taken", pn?.note ?? "");
+    await billing.switchPlanDemo(w, "basic", { promoCode: "AHSAN345" });
+    const p2 = await billing.switchPlanDemo(w, "pro", { promoCode: "AHSAN345" });
+    check("promo doesn't bypass once-per-plan: Pro -> Basic -> Pro with the code grants Pro once", p2.changed && p2.grantedTenths === 0 && (await bal(w)).b === 1000 + 6000 + 1200, `balance ${(await bal(w)).b}`);
+    // Accounts that got a plan before checkout existed (older plan_grant rows) aren't granted again.
+    await db.transaction((tx) => ledger.grantCredits(tx, w, 18000, "plan_grant", "Max plan (demo: no payment taken)"));
+    const legacy = await billing.switchPlanDemo(w, "max");
+    check("older plan_grant for Max blocks a second Max grant via checkout", legacy.changed && legacy.grantedTenths === 0);
+
+    for (const id of [u, v, w]) {
       const [{ sum }] = await db.select({ sum: sql<number>`coalesce(sum(delta_tenths),0)::int` }).from(S.creditLedger).where(eq(S.creditLedger.userId, id));
       check(`ledger sum == balance (${id.slice(0, 8)})`, sum === (await bal(id)).b);
     }
