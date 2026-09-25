@@ -7,19 +7,24 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { priceJob } from "@/lib/credits/pricing";
 import { STARTER_CREDITS_TENTHS } from "@/lib/credits/starter";
 import { clientIp, hashIp, imageQuota } from "@/lib/jobs/image-quota";
+import { homePair } from "@/lib/docket/home-pair";
 import { listMyLog, listPublicLog } from "@/lib/log/entries";
 import { liveRendersFor } from "@/lib/billing/limits";
 
 export const metadata = { title: { absolute: "Docket: make an image, then move the camera over it" } };
 
+// No loading boundary here: home's first HTML is the page itself, headline first, so crawlers,
+// share previews and screen readers get the real content, not a skeleton.
+
 export default async function Home() {
   const user = await getCurrentUser();
-  const [[image], moveCount, mine, publicEntries, quota] = await Promise.all([
+  const [[image], moveCount, mine, publicEntries, quota, pair] = await Promise.all([
     db.select().from(models).where(and(eq(models.id, "flux_1_schnell"), eq(models.active, true))),
     db.$count(presets),
     user ? listMyLog(user.id, { limit: 4 }) : Promise.resolve([]),
     listPublicLog(user?.id ?? null, { limit: 8 }),
     imageQuota(user?.id ?? null, hashIp(clientIp(await headers()))),
+    homePair(),
   ]);
   return (
     <HomePage
@@ -31,6 +36,7 @@ export default async function Home() {
       publicEntries={publicEntries}
       moveCount={moveCount}
       liveRenders={liveRendersFor(user?.kind ?? null)}
+      pair={pair}
     />
   );
 }

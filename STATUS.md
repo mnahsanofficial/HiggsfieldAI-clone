@@ -44,7 +44,7 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 
 ## Reviewer-pass fixes (owner tested the live site cold)
 1. `fix/honest-limits` (PR #31): `plans.images_per_day` (free 5, basic 10, pro 15, max 20; CHECK ≤ 57) is the one source for the cap, the cards and the starter (`lib/billing/limits.ts`); network cap = highest plan cap; live renders unchanged per plan. Cards/starter state the limits beside the credits; the "N camera moves" outcome is gone. `scripts/verify-limits.ts` ties copy to enforcement. DB connect timeout 10 s → 30 s (laptop connects measured 5–20 s).
-2. next: home headline and primary action; the still-and-take pair on home; published pre-rendered moves in the public log.
+2. `feat/home-headline-pair` (PR #32): one-line h1 in the first HTML (home has no loading boundary); a real still-and-take pair with the handle (`lib/docket/home-pair.ts`, a featured live-renderable move's preview over its still); out of images → the camera-move action leads, quota note second. `scripts/seed-public-moves.ts` published 4 pre-rendered moves from a library account that can't sign in (`library@docket.invalid`).
 3. then: share previews (og) and word-boundary titles; still-picker names (check); preset names in sentence case; readiness on production.
 
 ## Where things stand (2026-09-25)

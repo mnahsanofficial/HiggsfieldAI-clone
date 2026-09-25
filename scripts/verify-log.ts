@@ -118,8 +118,10 @@ async function main() {
 
     // 5. The public log is never empty: the seed collection fills it.
     const pub = await log.listPublicLog(null, { limit: 12 });
-    check("public log falls back to the seed library, labelled as library entries", pub.length === 12 && pub.every((e) => e.type === "library" && e.settlement === "free" && e.assets.length === 1), `${pub.length} entries`);
-    check("library entries carry a real model name from the database", pub.every((e) => e.modelName.length > 0 && e.assets[0].url.startsWith("/media/")));
+    const runs = pub.filter((e) => e.type === "run");
+    check("public log: published runs first, then the seed library, labelled as library entries", pub.length === 12 && pub.slice(runs.length).every((e) => e.type === "library" && e.settlement === "free" && e.assets.length === 1) && runs.every((e) => e.published), `${runs.length} runs, ${pub.length - runs.length} library`);
+    check("published camera moves in the public log are labelled pre-rendered examples", runs.filter((e) => e.vertical === "video").every((e) => e.servedAs === "prerendered" && e.renderedFrom !== null && e.balanceAfterTenths === null));
+    check("every public entry carries a real model name and real media", pub.every((e) => e.modelName.length > 0 && e.assets[0]?.url.startsWith("/media/")));
 
     // 6. Paging by timestamp.
     const page1 = await log.listMyLog(owner, { limit: 2 });
