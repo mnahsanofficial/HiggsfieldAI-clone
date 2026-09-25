@@ -28,6 +28,8 @@ export function Compare({
 }) {
   const [pos, setPosRaw] = useState(50);
   const [moved, setMoved] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const video = useRef<HTMLVideoElement>(null);
   const setPos = useCallback((next: number | ((p: number) => number)) => {
     setMoved(true);
     setPosRaw(next);
@@ -57,14 +59,16 @@ export function Compare({
       onPointerCancel={() => (dragging.current = false)}
     >
       <SkeletonVideo
+        ref={video}
         src={take.url}
         poster={take.posterUrl ?? undefined}
         muted
         loop
         playsInline
         autoPlay={!reduced}
-        controls={reduced}
         aria-label={take.label}
+        onPlay={() => setPlaying(true)}
+        onPause={() => setPlaying(false)}
         className="absolute inset-0 h-full w-full object-cover"
       />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
@@ -75,6 +79,21 @@ export function Compare({
       <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-paper/90 px-2 py-0.5 text-[0.75rem] font-semibold text-ink">{takeLabel}</span>
 
       <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-paper" style={{ left: `${pos}%` }} />
+      {reduced && (
+        // With reduced motion the take holds on its poster. Native controls would sit partly under
+        // the still's layer, so the play control is our own, on the camera-move side.
+        <button
+          type="button"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={() => (playing ? video.current?.pause() : void video.current?.play())}
+          className="absolute bottom-2 right-2 z-10 flex h-10 items-center gap-2 rounded-lg bg-paper/95 px-3 text-[0.875rem] font-semibold text-ink shadow-[0_1px_2px_rgba(20,22,26,.25)]"
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden fill="currentColor">
+            {playing ? <path d="M2.5 1.5h2.5v9H2.5zM7 1.5h2.5v9H7z" /> : <path d="M2.5 1.2v9.6L10.5 6z" />}
+          </svg>
+          {playing ? "Pause the move" : "Play the move"}
+        </button>
+      )}
       {hint && !moved && (
         <span aria-hidden className="pointer-events-none absolute top-1/2 mt-8 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink/85 px-2 py-1 text-[0.75rem] font-semibold text-paper" style={{ left: `${pos}%` }} data-testid="compare-hint">
           {hint}

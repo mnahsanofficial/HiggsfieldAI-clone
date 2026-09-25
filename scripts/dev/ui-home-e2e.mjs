@@ -53,6 +53,13 @@ try {
 
   // 2. The real pair, with the handle.
   check("the real still-and-move pair is the hero", !!(await page.$('[data-testid="home-pair"] [role="slider"]')) && (await inner(page, '[data-testid="home-pair"]')).includes("rendered with ffmpeg over a library still"));
+  const layout = await page.evaluate(() => { const h = document.querySelector("h1").getBoundingClientRect(); const f = document.querySelector('[data-testid="home-pair"]').getBoundingClientRect(); return { h1Right: Math.round(h.right), pairLeft: Math.round(f.left), pairTop: Math.round(f.top), pairBottom: Math.round(f.bottom), h: innerHeight }; });
+  if (mobile) check("on a phone the pair starts on the first screen, under the way in", layout.pairTop < layout.h, JSON.stringify(layout));
+  else check("at 1440×789 the headline and the way in sit beside the pair, and the whole pair is on the first screen", layout.h1Right <= layout.pairLeft && layout.pairBottom <= layout.h, JSON.stringify(layout));
+  // The camera-move side of the pair really plays on load: muted, looping, no native controls.
+  await page.waitForFunction(() => { const v = document.querySelector('[data-testid="home-pair"] video'); return v && !v.paused && v.currentTime > 0.3; }, { timeout: 15000 }).catch(() => {});
+  const hero = await page.$eval('[data-testid="home-pair"] video', (v) => ({ paused: v.paused, t: +v.currentTime.toFixed(2), muted: v.muted, loop: v.loop, controls: v.controls }));
+  check("the pair's camera move plays on load, muted and looping, with no native controls", !hero.paused && hero.t > 0.3 && hero.muted && hero.loop && !hero.controls, JSON.stringify(hero));
   const pairBox = await page.$eval('[data-testid="home-pair"]', (f) => Math.round(f.getBoundingClientRect().height));
   check("the pair's height is capped", pairBox <= (mobile ? 844 : 789) * 0.62 + 40, `${pairBox}px`);
   check("a 'Drag to compare' hint sits by the handle at first", (await inner(page, '[data-testid="compare-hint"]')) === "Drag to compare");
@@ -103,6 +110,12 @@ try {
   check("the public log is a short strip of about four entries, each a permalink", strip.length === 4 && strip.every((h) => UUID.test(h)), `${strip.length}`);
   const stripText = await inner(page, '[data-testid="public-strip"]');
   check("the strip shows real output: no pre-rendered examples", !stripText.includes("Pre-rendered example") && /Rendered live/.test(stripText), stripText.replace(/\s+/g, " ").slice(0, 160));
+  // No picture twice: a library still that a run on home was rendered over isn't also a tile.
+  const feed = (await (await fetch(`${base}/api/log?scope=public&limit=20`)).json()).entries;
+  const shownIds = [steps[2]?.record, ...strip].map((h) => h?.split("/").pop());
+  const stillsOfShownRuns = new Set(feed.filter((e) => shownIds.includes(e.id) && e.renderedFrom).map((e) => e.renderedFrom.id));
+  const repeated = strip.map((h) => h.split("/").pop()).filter((id) => stillsOfShownRuns.has(id));
+  check("no picture twice: the strip skips library stills that a run on home was rendered over", repeated.length === 0, repeated.join(", ") || `${stillsOfShownRuns.size} stills excluded`);
   check("the strip links to the whole public log", (await page.$$eval('[data-testid="public-strip"] a', (as) => as.some((a) => a.getAttribute("href") === "/log?scope=public" && a.textContent.trim() === "See all of it"))));
   check("nothing sells: no testimonials, stats or eyebrow labels", !/testimonial|trusted by|\d+\+|★/i.test(await inner(page, "main")));
   const footer = await page.$$eval("footer a, footer span", (els) => els.map((e) => `${e.textContent.trim()}${e.getAttribute("href") ? ` → ${e.getAttribute("href")}` : ""}`));
@@ -115,6 +128,12 @@ try {
   await page.reload({ waitUntil: "networkidle0" });
   const still2 = await page.$eval('[data-testid="how-it-works"] ol > li:nth-child(2)', (li) => ({ autoplay: li.querySelector("video")?.autoplay, paused: li.querySelector("video")?.paused, play: [...li.querySelectorAll("button")].map((b) => b.textContent.trim()) }));
   check("with reduced motion, step 2 doesn't move on its own and offers 'Play the move'", still2.autoplay === false && still2.paused === true && still2.play.includes("Play the move"), JSON.stringify(still2));
+  await new Promise((r) => setTimeout(r, 1500));
+  const heroStill = await page.$eval('[data-testid="home-pair"]', (f) => { const v = f.querySelector("video"); return { paused: v.paused, t: +v.currentTime.toFixed(2), poster: !!v.getAttribute("poster"), controls: v.controls, buttons: [...f.querySelectorAll("button")].map((b) => b.textContent.trim()).filter(Boolean) }; });
+  check("with reduced motion, the pair holds on its poster with its own play control (no native controls)", heroStill.paused && heroStill.t === 0 && heroStill.poster && !heroStill.controls && heroStill.buttons.includes("Play the move"), JSON.stringify(heroStill));
+  await page.evaluate(() => [...document.querySelectorAll('[data-testid="home-pair"] button')].find((b) => b.textContent.trim() === "Play the move").click());
+  const played = await page.waitForFunction(() => !document.querySelector('[data-testid="home-pair"] video').paused, { timeout: 5000 }).then(() => true, () => false);
+  check("and that control plays the move", played && (await page.$$eval('[data-testid="home-pair"] button', (bs) => bs.some((b) => b.textContent.trim() === "Pause the move"))));
   await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 
   // 8. The public log page: everything, paged without repeats.

@@ -23,39 +23,43 @@ export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRen
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-14 px-4 py-8 sm:gap-20 sm:py-12">
-      <section aria-labelledby="home-heading" className="flex flex-col gap-6">
-        <div className="flex max-w-3xl flex-col gap-3">
-          <h1 id="home-heading" className="t-display">
-            Docket makes an image, then moves the camera over it.
-          </h1>
-          <p className="t-body text-muted" data-testid="home-for">
-            For anyone who wants a moving shot from a single picture: describe an image, pick one of {d.moveCount} camera moves, and get a {d.move.seconds}-second {d.move.resolution} clip, with every credit accounted for.
-          </p>
+      {/* On a phone the hero stacks: words, the way in, then the pair. From lg up the words and the
+          way in sit beside the pair, so the page isn't left-heavy and the pair is on the first screen. */}
+      <section aria-labelledby="home-heading" className="grid items-center gap-6 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:gap-10">
+        <div className="flex flex-col gap-6">
+          <div className="flex max-w-3xl flex-col gap-3">
+            <h1 id="home-heading" className="t-display">
+              Docket makes an image, then moves the camera over it.
+            </h1>
+            <p className="t-body text-muted" data-testid="home-for">
+              For anyone who wants a moving shot from a single picture: describe an image, pick one of {d.moveCount} camera moves, and get a {d.move.seconds}-second {d.move.resolution} clip, with every credit accounted for.
+            </p>
+          </div>
+          {outOfImages ? (
+            // Out of today's images: lead with what still works, and say why second.
+            <div className="flex max-w-md flex-col gap-3" data-testid="home-actions">
+              <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
+                Move the camera over a library image
+              </ButtonLink>
+              <ImageAllowance quota={d.quota} />
+              <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+                See the public log
+              </ButtonLink>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-actions">
+              <ButtonLink href={ROUTES.make} size="lg">
+                Start making
+              </ButtonLink>
+              <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+                See the public log
+              </ButtonLink>
+            </div>
+          )}
         </div>
-        {outOfImages ? (
-          // Out of today's images: lead with what still works, and say why second.
-          <div className="flex max-w-md flex-col gap-3" data-testid="home-actions">
-            <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
-              Move the camera over a library image
-            </ButtonLink>
-            <ImageAllowance quota={d.quota} />
-            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
-              See the public log
-            </ButtonLink>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-actions">
-            <ButtonLink href={ROUTES.make} size="lg">
-              Start making
-            </ButtonLink>
-            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
-              See the public log
-            </ButtonLink>
-          </div>
-        )}
         {d.pair && (
           // Capped so the pair never grows past the first screen's worth of height.
-          <figure className="flex flex-col gap-2" style={{ width: `min(100%, 960px, calc(58svh * ${d.pair.take.width} / ${d.pair.take.height}))` }} data-testid="home-pair">
+          <figure className="flex flex-col gap-2 lg:justify-self-end" style={{ width: `min(100%, calc(58svh * ${d.pair.take.width} / ${d.pair.take.height}))` }} data-testid="home-pair">
             <Compare
               still={{ url: d.pair.still.url, alt: d.pair.still.prompt ?? "The still" }}
               take={{ url: d.pair.take.url, posterUrl: d.pair.take.posterUrl, label: `${d.pair.presetName}, rendered over the still` }}

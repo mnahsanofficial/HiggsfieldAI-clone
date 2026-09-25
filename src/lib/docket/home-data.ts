@@ -45,7 +45,10 @@ export async function homeData(user: { id: string; kind: "guest" | "registered" 
   const example = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null;
   // The strip shows real output: the other live runs, then library images. Pre-rendered
   // examples stay in the public log, labelled, but don't stand in for the product here.
-  const strip = [...live.filter((e) => e.id !== example?.id), ...publicEntries.filter((e) => e.type === "library")].slice(0, 4);
+  // A library image that a run shown here was rendered over would appear twice, so it's skipped.
+  const runs = live.filter((e) => e.id !== example?.id);
+  const shownStills = new Set([example, ...runs].map((e) => e?.renderedFrom?.id).filter(Boolean));
+  const strip = [...runs, ...publicEntries.filter((e) => e.type === "library" && !shownStills.has(e.id))].slice(0, 4);
   const resolution = move.capabilities.resolutions[0];
   const seconds = move.capabilities.durations?.[0] ?? 5;
   return {
