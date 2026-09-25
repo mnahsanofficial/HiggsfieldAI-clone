@@ -12,7 +12,7 @@ import { ImageAllowance } from "../make/composer";
 import { ROUTES } from "../routes";
 
 // Home explains; /make makes; /log remembers. Top to bottom: what Docket is and who it's for,
-// the real still-and-move pair, how it works (each step a real artifact from one published run),
+// the one way in (above the fold at 390 and 1440), the real still-and-move pair, how it works (each step a real artifact from one published run),
 // what's real, what's free, one way in, and a short strip of the public log.
 // Every number here comes from HomeData, which reads it from the database or the enforced values.
 export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRendersWithAccount }: { data: HomeData; signedIn: boolean; registered: boolean; balanceTenths: number | null; liveRendersWithAccount: number }) {
@@ -31,16 +31,39 @@ export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRen
             For anyone who wants a moving shot from a single picture: describe an image, pick one of {d.moveCount} camera moves, and get a {d.move.seconds}-second {d.move.resolution} clip, with every credit accounted for.
           </p>
         </div>
+        {outOfImages ? (
+          // Out of today's images: lead with what still works, and say why second.
+          <div className="flex max-w-md flex-col gap-3" data-testid="home-actions">
+            <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
+              Move the camera over a library image
+            </ButtonLink>
+            <ImageAllowance quota={d.quota} />
+            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+              See the public log
+            </ButtonLink>
+          </div>
+        ) : (
+          <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-actions">
+            <ButtonLink href={ROUTES.make} size="lg">
+              Start making
+            </ButtonLink>
+            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+              See the public log
+            </ButtonLink>
+          </div>
+        )}
         {d.pair && (
-          <figure className="flex max-w-[960px] flex-col gap-2" data-testid="home-pair">
+          // Capped so the pair never grows past the first screen's worth of height.
+          <figure className="flex flex-col gap-2" style={{ width: `min(100%, 960px, calc(58svh * ${d.pair.take.width} / ${d.pair.take.height}))` }} data-testid="home-pair">
             <Compare
               still={{ url: d.pair.still.url, alt: d.pair.still.prompt ?? "The still" }}
               take={{ url: d.pair.take.url, posterUrl: d.pair.take.posterUrl, label: `${d.pair.presetName}, rendered over the still` }}
               width={d.pair.take.width}
               height={d.pair.take.height}
               stillLabel="Library still"
+              hint="Drag to compare"
             />
-            <figcaption className="t-meta">{d.pair.presetName}, rendered with ffmpeg over a library still. Drag the handle to compare.</figcaption>
+            <figcaption className="t-meta">{d.pair.presetName}, rendered with ffmpeg over a library still.</figcaption>
           </figure>
         )}
       </section>
@@ -83,27 +106,6 @@ export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRen
             {!registered && liveRendersWithAccount !== d.liveRenders ? ` (${liveRendersWithAccount} with an account)` : ""}. After that, camera moves come as pre-rendered examples, free.
           </p>
         </div>
-        {outOfImages ? (
-          // Out of today's images: lead with what still works, and say why second.
-          <div className="flex max-w-md flex-col gap-3" data-testid="home-actions">
-            <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
-              Move the camera over a library image
-            </ButtonLink>
-            <ImageAllowance quota={d.quota} />
-            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
-              See the public log
-            </ButtonLink>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-actions">
-            <ButtonLink href={ROUTES.make} size="lg">
-              Start making
-            </ButtonLink>
-            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
-              See the public log
-            </ButtonLink>
-          </div>
-        )}
       </section>
 
       {d.strip.length > 0 && (
