@@ -12,7 +12,7 @@ export const PLANS = [
   {
     id: "free",
     name: "Free",
-    tagline: "Try every tool",
+    tagline: "What every account starts on",
     rank: 0,
     monthlyCreditsTenths: 0,
     priceMonthlyCents: 0,
@@ -21,7 +21,7 @@ export const PLANS = [
   {
     id: "basic",
     name: "Basic",
-    tagline: "For first-time AI creators",
+    tagline: "Enough to try the whole loop",
     rank: 1,
     monthlyCreditsTenths: 1200,
     priceMonthlyCents: 900,
@@ -30,7 +30,7 @@ export const PLANS = [
   {
     id: "pro",
     name: "Pro",
-    tagline: "For everyday AI creation",
+    tagline: "For making something most days",
     rank: 2,
     monthlyCreditsTenths: 6000,
     priceMonthlyCents: 2900,
@@ -39,7 +39,7 @@ export const PLANS = [
   {
     id: "max",
     name: "Max",
-    tagline: "For ambitious AI projects",
+    tagline: "For a lot of camera moves",
     rank: 3,
     monthlyCreditsTenths: 18000,
     priceMonthlyCents: 7900,

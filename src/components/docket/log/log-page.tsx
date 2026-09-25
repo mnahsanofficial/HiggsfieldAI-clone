@@ -117,7 +117,7 @@ export function LogPage({
         </p>
       )}
 
-      {shown.length === 0 && (
+      {shown.length === 0 && !(view === "list" && rows.length > 0) && (
         <div className="flex max-w-xl flex-col items-start gap-3 rounded-xl bg-field p-5">
           <p className="t-body">
             {filter === "video"
@@ -163,7 +163,7 @@ export function LogPage({
         </ol>
       )}
 
-      {shown.length > 0 && view === "list" && (
+      {rows.length > 0 && view === "list" && (
         <ol className="flex max-w-[760px] flex-col gap-2" aria-label="Credit movements, newest first">
           {rows.map((r) => ("run" in r ? <RunRow key={`r-${r.run.id}`} entry={r.run} /> : <CreditRow key={`c-${r.credit.id}`} event={r.credit} />))}
         </ol>
