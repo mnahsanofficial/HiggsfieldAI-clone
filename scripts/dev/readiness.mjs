@@ -45,6 +45,28 @@ const pub = await (await fetch(`${base}/api/log?scope=public&limit=6`)).json();
 check("public log has real rows", pub.entries.length >= 6 && pub.entries.every((e) => e.assets[0]?.url?.startsWith("/media/")), `${pub.entries.length}`);
 check("the allowance numbers are real, not test mode", pub.quota && pub.quota.testMode === false && pub.quota.siteCapacity === 57, JSON.stringify(pub.quota));
 
+// Share previews: home, a published camera move, and a library image each carry og:title,
+// og:description and a generated og:image that loads; titles are never cut mid-word.
+const meta = (html, key) => (html.match(new RegExp(`<meta[^>]+(?:property|name)="${key}"[^>]+content="([^"]*)"`)) ?? [])[1] ?? null;
+const move = pub.entries.find((e) => e.vertical === "video");
+const longest = [...pub.entries].filter((e) => e.type === "library").sort((a, b) => b.prompt.length - a.prompt.length)[0];
+for (const [name, path] of [["home", "/"], ["a published camera move", move ? `/log/${move.id}` : null], ["a library image", `/log/${longest.id}`]]) {
+  if (!path) {
+    check(`share preview: ${name}`, false, "none in the public log");
+    continue;
+  }
+  const html = await (await fetch(base + path)).text();
+  const [t, d, img, card] = [meta(html, "og:title"), meta(html, "og:description"), meta(html, "og:image"), meta(html, "twitter:card")];
+  const imgRes = img ? await fetch(img.replace(/^https?:\/\/[^/]+/, base)) : null;
+  const bytes = imgRes?.ok ? Buffer.from(await imgRes.arrayBuffer()) : Buffer.alloc(0);
+  const png = bytes.subarray(1, 4).toString() === "PNG" ? { w: bytes.readUInt32BE(16), h: bytes.readUInt32BE(20) } : null;
+  check(`share preview: ${name} has og:title, description, a 1200x630 image and a large card`, !!t && !!d && card === "summary_large_image" && png?.w === 1200 && png?.h === 630, `${t?.slice(0, 50)} | ${png ? `${png.w}x${png.h}` : imgRes?.status}`);
+}
+const titleHtml = await (await fetch(`${base}/log/${longest.id}`)).text();
+const pageTitle = (titleHtml.match(/<title>([^<]*)<\/title>/) ?? [])[1] ?? "";
+const bare = pageTitle.replace(/ · Docket$/, "").replace(/&#x27;|&amp;/g, "'");
+check("a long prompt's title ends at a word boundary with an ellipsis", longest.prompt.length <= 60 || (bare.endsWith("…") && longest.prompt.startsWith(bare.slice(0, -1)) && [" ", ","].includes(longest.prompt[bare.length - 1] ?? " ")), `${bare} (${longest.prompt.length} chars)`);
+
 const PAGES = [
   ["/", 200],
   ["/make", 200],
