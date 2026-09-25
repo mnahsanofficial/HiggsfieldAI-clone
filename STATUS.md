@@ -20,9 +20,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 
 | # | Branch | State |
 |---|---|---|
-| 1 | `fix/backend-audit` | done |
-| 2 | `feat/design-system` | **next** |
-| 3 | create flow (image → camera move) | todo |
+| 1 | `fix/backend-audit` | done (PR #22) |
+| 2 | `feat/design-system` | done |
+| 3 | `feat/make` create flow (image → camera move) | **next** |
 | 4 | library and history (the log) | todo |
 | 5 | home | todo |
 | 6 | credits, paywall, checkout | todo |
@@ -41,6 +41,14 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Design system (PR #23)
+- Tokens in `globals.css` `@theme` (`paper field line ink muted posted charged live`), `.docket` scope with the type scale (`t-display t-title t-body t-meta t-label`), focus ring, reduced motion.
+- Components: `src/components/ui/` (`button`, `field`, `segmented`, `amount`, `tag`, `cost-meter`, `sheet`, `compare`, `use-reduced-motion`); Docket shell `src/components/docket/` (`header`, `routes`).
+- Route groups: the old UI lives in `src/app/(legacy)` (removed at switch-over); Docket in `src/app/(docket)`. `ROUTES` in `components/docket/routes.ts`: `/make`, `/log`, `/log/<id>`, `/sign-in`, `/sign-up` are final; home and credits sit at `/next`, `/next/credits` until switch-over.
+- Font: Public Sans variable, self-hosted (`src/app/fonts`). **No monospaced face**: tabular figures measured at 0.00px spread across digits.
+- `assets.source_asset_id`: the still a video was actually rendered over (a pre-rendered example's is a library still). The log exposes it as `renderedFrom`; the compare handle must use it, never the user's pick.
+- `/style` shows every component; `node scripts/dev/design-system-check.mjs <base> [dir] [--mobile]` audits it (11 checks).
 
 ## Backend audit (PR #22)
 

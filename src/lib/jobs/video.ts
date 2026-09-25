@@ -114,6 +114,8 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
         presetId: preset.id,
         prompt: `${preset.name}: pre-rendered example (${FALLBACK_COPY[decision.reason]})`,
         aspect: input.aspect,
+        // Rendered over a library still, not the user's image: the compare view must know.
+        sourceAssetId: clip.sourceAssetId,
       });
       return { jobId: job.id, costTenths: 0, live: false as const, reason: decision.reason };
     }
@@ -146,7 +148,7 @@ async function findPrerenderedClip(tx: Tx, presetId: string, aspect: string) {
   // collection 'render_library', the preset it renders, and the aspect it was rendered at.
   const pick = (where: SQL | undefined) =>
     tx
-      .select({ id: assets.id, url: assets.url, posterUrl: assets.posterUrl, width: assets.width, height: assets.height, durationMs: assets.durationMs })
+      .select({ id: assets.id, url: assets.url, posterUrl: assets.posterUrl, width: assets.width, height: assets.height, durationMs: assets.durationMs, sourceAssetId: assets.sourceAssetId })
       .from(assets)
       .where(and(eq(assets.collection, "render_library"), isNull(assets.deletedAt), where))
       .limit(1);
@@ -231,6 +233,7 @@ export async function runVideoJob(jobId: string, invokedAtMs = Date.now()): Prom
         presetId: preset.id,
         prompt: job.prompt,
         aspect: job.params.aspect,
+        sourceAssetId: job.inputAssetId,
       });
     });
   } catch (err) {
