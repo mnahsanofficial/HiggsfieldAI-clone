@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { clientIp, hashIp, imageQuota } from "@/lib/jobs/image-quota";
 import { sweepStaleJobs } from "@/lib/jobs/service";
 import { listCreditEvents, listMyLog, listPublicLog } from "@/lib/log/entries";
 
@@ -13,14 +14,16 @@ export async function GET(request: Request) {
   const before = url.searchParams.get("before") ?? undefined;
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 20) || 20, 1), 50);
   const user = await getCurrentUser();
+  // The real numbers for the free image allowance, so every screen can show them.
+  const quota = await imageQuota(user?.id ?? null, hashIp(clientIp(request)));
 
   if (scope === "mine") {
-    if (!user) return NextResponse.json({ entries: [], credits: [], balanceTenths: null, signedIn: false });
+    if (!user) return NextResponse.json({ entries: [], credits: [], balanceTenths: null, signedIn: false, quota });
     await sweepStaleJobs(); // polling traffic drives the stale-job sweep; throttled inside
     const entries = await listMyLog(user.id, { limit, before });
     const full = entries.length === limit;
     const credits = url.searchParams.get("include") === "credits" ? await listCreditEvents(user.id, { before, after: full ? entries[entries.length - 1].createdAt : undefined }) : [];
-    return NextResponse.json({ entries, credits, balanceTenths: user.creditBalanceTenths, signedIn: true, more: full });
+    return NextResponse.json({ entries, credits, balanceTenths: user.creditBalanceTenths, signedIn: true, more: full, quota });
   }
-  return NextResponse.json({ entries: await listPublicLog(user?.id ?? null, { limit, before }), balanceTenths: user?.creditBalanceTenths ?? null, signedIn: !!user });
+  return NextResponse.json({ entries: await listPublicLog(user?.id ?? null, { limit, before }), balanceTenths: user?.creditBalanceTenths ?? null, signedIn: !!user, quota });
 }

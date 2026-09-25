@@ -6,6 +6,8 @@ import { assets, generationJobs, type JobParams, models, plans, providerCache, s
 import { chargeForJob, refundJob } from "@/lib/credits/ledger";
 import { priceJob } from "@/lib/credits/pricing";
 import { StorageCapReachedError, uploadMedia } from "@/lib/storage";
+import { assertImageAllowance, DailyLimitError, markImagesExhausted, reserveImageCall, siteMessage } from "./image-quota";
+import { fixtureMode, fixtureProvider } from "./providers/fixture";
 import { cropToAspect } from "./image";
 import { cloudflareProvider } from "./providers/cloudflare";
 import { type ImageProvider, ProviderError, type ProviderErrorCode } from "./providers/types";
@@ -22,14 +24,8 @@ const MAX_ACTIVE_JOBS_PER_USER = 4;
 // model didn't generate.
 const QUOTA_CODES: ProviderErrorCode[] = ["quota_exhausted", "rate_limited", "not_configured"];
 
-function untilUtcMidnight(now = new Date()): string {
-  const mins = Math.max(1, Math.ceil((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - now.getTime()) / 60000));
-  const h = Math.floor(mins / 60);
-  return h ? `${h}h ${mins % 60}m` : `${mins}m`;
-}
-
 export function providerFailureMessage(code: ProviderErrorCode, fallback: string): string {
-  if (code === "quota_exhausted") return `The free daily image limit for this deployment has been used up. It resets at 00:00 UTC, in ${untilUtcMidnight()}. Your credits were refunded.`;
+  if (code === "quota_exhausted") return `${siteMessage()} Your credits were refunded.`;
   if (code === "rate_limited") return "The image provider is handling too many requests right now. Try again in a minute. Your credits were refunded.";
   if (code === "not_configured") return "Image generation isn't configured on this deployment. Your credits were refunded.";
   return fallback;
@@ -52,6 +48,7 @@ export type SubmitInput = {
   resolution: string;
   batchSize: number;
   retryOfJobId?: string | null;
+  clientIpHash?: string | null;
 };
 
 export async function submitImageJob(userId: string, input: SubmitInput): Promise<{ jobId: string; costTenths: number }> {
@@ -79,6 +76,8 @@ export async function submitImageJob(userId: string, input: SubmitInput): Promis
   const { costTenths } = priceJob(model.pricing, params);
 
   const jobId = await db.transaction(async (tx) => {
+    // The user row is locked so two quick submits can't both fit into the last free images.
+    await tx.execute(sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
     const [{ active }] = await tx
       .select({ active: sql<number>`count(*)::int` })
       .from(generationJobs)
@@ -86,6 +85,9 @@ export async function submitImageJob(userId: string, input: SubmitInput): Promis
     if (active >= MAX_ACTIVE_JOBS_PER_USER) {
       throw new JobInputError(`You can run ${MAX_ACTIVE_JOBS_PER_USER} generations at once. Wait for one to finish.`, 429, "too_many_active");
     }
+    // Before any charge. A fixture run (tests, off Vercel only) spends nothing, so the site-wide
+    // allowance isn't checked for it; the per-visitor and per-network caps still are.
+    await assertImageAllowance(tx, userId, input.clientIpHash ?? null, batchSize, { site: !fixtureMode() });
     const [job] = await tx
       .insert(generationJobs)
       .values({
@@ -95,7 +97,8 @@ export async function submitImageJob(userId: string, input: SubmitInput): Promis
         prompt,
         params,
         costTenths,
-        providerKey: model.providerKey,
+        providerKey: fixtureMode() ? fixtureProvider.key : model.providerKey,
+        clientIpHash: input.clientIpHash ?? null,
         retryOfJobId: input.retryOfJobId ?? null,
       })
       .returning({ id: generationJobs.id });
@@ -119,7 +122,7 @@ export async function runImageJob(jobId: string, opts: RunOptions = {}): Promise
 
   try {
     const [model] = await db.select().from(models).where(eq(models.id, job.modelId));
-    const provider = opts.provider ?? PROVIDERS[model.providerKey];
+    const provider = opts.provider ?? (job.providerKey === fixtureProvider.key ? fixtureProvider : PROVIDERS[model.providerKey]);
     if (!provider) throw new ProviderError("not_configured", `No provider for ${model.providerKey}`);
 
     const outputs: { url: string; width: number; height: number }[] = [];
@@ -134,6 +137,8 @@ export async function runImageJob(jobId: string, opts: RunOptions = {}): Promise
         await db.update(providerCache).set({ hits: sql`${providerCache.hits} + 1` }).where(eq(providerCache.key, cacheKey));
         outputs.push({ url: cached.assetUrl, width: cached.width, height: cached.height });
       } else {
+        // Only a call to the real provider spends the shared daily allowance.
+        if (provider === cloudflareProvider) await reserveImageCall();
         const image = await provider.generate({ modelRef: model.providerModelRef, prompt: job.prompt });
         const cropped = await cropToAspect(image.bytes, job.params.aspect);
         const { url } = await uploadMedia(`generations/${jobId}-${i}.jpg`, cropped.bytes, "image/jpeg");
@@ -176,7 +181,11 @@ export async function runImageJob(jobId: string, opts: RunOptions = {}): Promise
       if (QUOTA_CODES.includes(err.code)) {
         await db.insert(systemEvents).values({ kind: `provider_${err.code}`, detail: { jobId, detail: err.detail ?? null } });
       }
+      // Only the real provider's word marks the day used up (never a test double's).
+      if (err.code === "quota_exhausted" && !opts.provider && job.providerKey === "cloudflare") await markImagesExhausted();
       await failJob(jobId, err.code, providerFailureMessage(err.code, err.message));
+    } else if (err instanceof DailyLimitError) {
+      await failJob(jobId, "quota_exhausted", `${err.message} Your credits were refunded.`);
     } else if (err instanceof StorageCapReachedError) {
       await failJob(jobId, "storage_cap", "New uploads are paused for this month. Your credits were refunded.");
     } else {
@@ -219,7 +228,7 @@ export async function cancelJob(userId: string, jobId: string): Promise<boolean>
   });
 }
 
-export async function retryJob(userId: string, jobId: string): Promise<{ jobId: string; vertical: "image" | "video"; live: boolean }> {
+export async function retryJob(userId: string, jobId: string, clientIpHash: string | null = null): Promise<{ jobId: string; vertical: "image" | "video"; live: boolean }> {
   const [old] = await db
     .select()
     .from(generationJobs)
@@ -239,7 +248,7 @@ export async function retryJob(userId: string, jobId: string): Promise<{ jobId: 
     });
     return { jobId: r.jobId, vertical: "video", live: r.live };
   }
-  const r = await submitImageJob(userId, { modelId: old.modelId, prompt: old.prompt, ...old.params, retryOfJobId: old.id });
+  const r = await submitImageJob(userId, { modelId: old.modelId, prompt: old.prompt, ...old.params, retryOfJobId: old.id, clientIpHash });
   return { jobId: r.jobId, vertical: "image", live: true };
 }
 

@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { InsufficientCreditsError } from "@/lib/credits/ledger";
+import { clientIp, DailyLimitError, hashIp } from "@/lib/jobs/image-quota";
 import { balanceOf, JobInputError, listJobs, runImageJob, submitImageJob, sweepStaleJobs } from "@/lib/jobs/service";
 import { runVideoJob, submitVideoJob } from "@/lib/jobs/video";
 
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
         aspect: String(body.aspect ?? ""),
         resolution: String(body.resolution ?? ""),
         batchSize: Number(body.batchSize ?? 1),
+        clientIpHash: hashIp(clientIp(request)),
       }));
       after(() => runImageJob(jobId));
     }
@@ -53,6 +55,7 @@ export async function POST(request: Request) {
         { status: 402 },
       );
     }
+    if (err instanceof DailyLimitError) return NextResponse.json({ error: "daily_limit", scope: err.scope, message: err.message }, { status: 429 });
     if (err instanceof JobInputError) return NextResponse.json({ error: err.code, message: err.message }, { status: err.status });
     throw err;
   }

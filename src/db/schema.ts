@@ -206,6 +206,9 @@ export const generationJobs = pgTable(
     errorMessage: text("error_message"),
     retryOfJobId: uuid("retry_of_job_id").references((): AnyPgColumn => generationJobs.id, { onDelete: "set null" }),
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    // Keyed hash of the submitting client's IP (never the IP itself), for the per-network
+    // daily image ceiling that stops one person cycling guest sessions to drain the day.
+    clientIpHash: text("client_ip_hash"),
     // Opt-in publishing for the public log. Null means private, which is the default for
     // every run; only registered accounts can set it (guests never appear publicly).
     publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -258,6 +261,21 @@ export const creditLedger = pgTable(
 // if that is exceeded. Every upload must first increment this counter; the CHECK makes
 // the 1,500 hard stop a database guarantee rather than an application convention.
 export const BLOB_PUTS_MONTHLY_CAP = 1500;
+
+// The image provider's free allocation: 10,000 neurons a day, and FLUX.1 schnell at 1024x1024
+// and 4 steps costs 172.8 neurons (4 tiles at 4.8, plus 4 tiles x 4 steps at 9.6). That is 57
+// images a day, which matches the 58th call being the one refused on 2026-09-25. Every real
+// provider call reserves one here first; the CHECK makes the ceiling a database guarantee.
+export const IMAGE_CALLS_PER_DAY = 57;
+export const imageUsage = pgTable(
+  "image_usage",
+  {
+    day: text("day").primaryKey(), // 'YYYY-MM-DD' (UTC)
+    calls: integer("calls").notNull().default(0),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [check("image_usage_calls_cap", sql`${t.calls} BETWEEN 0 AND ${sql.raw(String(IMAGE_CALLS_PER_DAY))}`)],
+);
 export const blobUsage = pgTable(
   "blob_usage",
   {

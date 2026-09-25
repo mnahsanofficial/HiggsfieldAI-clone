@@ -4,8 +4,10 @@
 // hands the still to the camera-move mode; a pre-rendered move (arc) comes back free and
 // labelled, compared against the library still it was really rendered over; a large batch is
 // cancelled and refunded; and an empty balance turns the button into "Get more credits".
+// Run the server with IMAGE_PROVIDER=fixture: images then come from the test fixture and the
+// shared daily allowance is never spent (the page says "Test mode"; the test refuses otherwise).
 // Live renders only with E2E_LIVE=1, and never point that at Vercel (compute allowance).
-// usage: node scripts/dev/ui-make-e2e.mjs <baseUrl> [screenshotDir] [--mobile]
+// usage: IMAGE_PROVIDER=fixture next start -p 3100; node scripts/dev/ui-make-e2e.mjs <baseUrl> [screenshotDir] [--mobile]
 import puppeteer from "puppeteer-core";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync } from "node:fs";
@@ -27,6 +29,7 @@ const balance = (page) => page.evaluate(() => [...document.querySelectorAll("hea
 const firstEntry = (page) => page.$eval("[data-entry]", (e) => e.innerText).catch(() => "");
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 
+let guestId = null;
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: mkdtempSync(join(tmpdir(), "hf-mk-")), args: ["--no-first-run", "--autoplay-policy=no-user-gesture-required"] });
 try {
   const page = await browser.newPage();
@@ -38,6 +41,9 @@ try {
   const body = await page.evaluate(() => document.body.innerText);
   check("signed out: make box, the invitation line and the public log", body.includes("Everything you make lands here") && body.includes("From the public log") && (await page.$$("[data-entry]")).length >= 3);
   check("library entries are tagged as library, with no amount", !(await firstEntry(page)).includes("free") && (await firstEntry(page)).includes("From the library"));
+  const allowanceLine = await page.$eval("[data-quota]", (e) => e.innerText);
+  if (!allowanceLine.startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
+  check("the allowance line shows your real remaining count (5 today)", allowanceLine.includes("You can make 5 more today"), allowanceLine);
   const meter = await page.$eval('[role="img"][aria-label^="This costs"]', (m) => m.getAttribute("aria-label"));
   check("price drawn against the starter balance before anything is pressed", /costs 2 of your 100 credits, leaving 98/.test(meter), meter);
   check("no horizontal overflow (empty)", (await overflow(page)) === 0);
@@ -113,8 +119,23 @@ try {
     await shot(page, "6-live");
   }
 
-  // 5. Cancel a run: four images take long enough to stop, and the refund is on the record.
+  // 5. Not enough credits: the button becomes a way to get more, and nothing is charged.
+  const token = (await page.cookies()).find((c) => c.name === "hf_session")?.value;
+  const userId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
+  guestId = userId;
+  execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "10"], { stdio: "ignore" });
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("#prompt");
   await clickExact(page, "form label span", "Image");
+  await clickExact(page, "form label span", "4");
+  const short = await page.$eval("form", (f) => f.innerText);
+  check("short on credits: says what it costs and what you have, offers 'Get more credits'", short.includes("This costs 8 credits and you have 1") && short.includes("Get more credits") && !(await page.$("form button[type=submit]")));
+  await shot(page, "8-short");
+  execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "980"], { stdio: "ignore" });
+  await page.reload({ waitUntil: "load" });
+  await page.waitForSelector("#prompt");
+
+  // 6. Cancel a run: four images take long enough to stop, and the refund is on the record.
   await page.$eval("#prompt", (t) => {
     // Clear a React-controlled textarea the way a user's edit would.
     Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value").set.call(t, "");
@@ -130,24 +151,28 @@ try {
   await page.waitForFunction(() => document.querySelector("[data-entry]")?.innerText.includes("You stopped this run"), { timeout: 30000 });
   await new Promise((r) => setTimeout(r, 900));
   const stopped = await firstEntry(page);
-  check("cancel: the run says it stopped, and shows +8 refunded", stopped.includes("+8") && stopped.includes("refunded") && stopped.includes("Try again") && stopped.includes("copper kettle") && !stopped.includes("paper lantern"), stopped.replace(/\s+/g, " ").slice(0, 120));
+  check("cancel: the run says it stopped, and shows +8 refunded", stopped.includes("+8") && stopped.includes("refunded") && stopped.includes("copper kettle") && !stopped.includes("paper lantern"), stopped.replace(/\s+/g, " ").slice(0, 120));
   await shot(page, "7-canceled");
 
-  // 6. Not enough credits: the button becomes a way to get more, and nothing is charged.
-  const token = (await page.cookies()).find((c) => c.name === "hf_session")?.value;
-  const userId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
-  execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "10"], { stdio: "ignore" });
-  await page.reload({ waitUntil: "load" });
-  await page.waitForSelector("#prompt");
-  await clickExact(page, "form label span", "4");
-  const short = await page.$eval("form", (f) => f.innerText);
-  check("short on credits: says what it costs and what you have, offers 'Get more credits'", short.includes("This costs 8 credits and you have 1") && short.includes("Get more credits") && !(await page.$("form button[type=submit]")));
-  await shot(page, "8-short");
+  // 7. The per-visitor cap: 1 + 4 images today, so no more, and the page says when that resets.
+  await page.waitForFunction(() => document.querySelector("[data-quota]")?.innerText.includes("made your 5 free images"), { timeout: 15000 }).catch(() => {});
+  const capped = await page.$eval("form", (f) => f.innerText);
+  const disabled = await page.$eval("form button[type=submit]", (b) => b.disabled).catch(() => null);
+  check("when capped, no price is drawn for images you can't make", !(await page.$('form [role="img"][aria-label^="This costs"]')));
+  check("a retry that today's allowance can't run isn't offered", !(await firstEntry(page)).includes("Try again"));
+  check("after 5 images: 'You've made your 5 free images today', and Make is disabled", capped.includes("made your 5 free images today") && /00:00 UTC/.test(capped) && disabled === true && !capped.includes("Get more credits"), `${disabled} | ${await page.$eval("[data-quota]", (e) => e.innerText)}`);
+  await page.$eval("form", (f) => f.scrollIntoView({ block: "start" }));
+  await page.evaluate(() => scrollBy(0, -80));
+  await shot(page, "9-capped");
+
+
 } catch (e) {
   console.log(results.join("\n"));
   throw e;
 } finally {
   await browser.close();
+  // The guest and its fixture runs are test data: remove them.
+  if (guestId) execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/test-account.ts", "delete", guestId], { stdio: "ignore" });
 }
 console.log(results.join("\n"));
 if (results.some((r) => r.startsWith("FAIL"))) process.exit(1);
