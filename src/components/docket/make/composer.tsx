@@ -175,7 +175,7 @@ export function Composer(p: ComposerProps) {
 }
 
 // The real numbers for the free image allowance: what's left for everyone today, and for you.
-function ImageAllowance({ quota: q }: { quota: ImageQuota }) {
+export function ImageAllowance({ quota: q }: { quota: ImageQuota }) {
   const plural = (n: number) => (n === 1 ? "image" : "images");
   let line;
   if (!q.testMode && q.siteLeft === 0) {

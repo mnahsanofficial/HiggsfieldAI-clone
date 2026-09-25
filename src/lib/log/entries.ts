@@ -170,7 +170,8 @@ async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntr
       costTenths: j.costTenths,
       chargedTenths: charged,
       refundedTenths: refunded,
-      balanceAfterTenths: m?.balanceAfter ?? null,
+      // Someone's balance is theirs alone: never on another viewer's copy of a run.
+      balanceAfterTenths: j.userId === viewerId ? (m?.balanceAfter ?? null) : null,
       settlement: charged === 0 ? "free" : refunded >= charged ? "refunded" : "charged",
       errorCode: j.errorCode,
       errorMessage: j.errorMessage,
