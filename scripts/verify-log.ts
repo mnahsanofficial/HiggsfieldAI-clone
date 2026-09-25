@@ -93,6 +93,8 @@ async function main() {
     // 4. Publishing is opt-in, reversible, and closed to guests.
     check("publish makes it public and linkable to a signed-out visitor", (await log.setPublished(owner, j1, true)) && (await log.getLogEntry(j1, null))?.published === true);
     check("a published run appears in the public log", (await log.listPublicLog(null)).some((e) => e.id === j1));
+    const seen = (await log.listPublicLog(stranger)).find((e) => e.id === j1);
+    check("the public copy never carries the owner's balance", seen?.balanceAfterTenths === null && (await log.getLogEntry(j1, null))?.balanceAfterTenths === null && (await log.getLogEntry(j1, owner))?.balanceAfterTenths !== null);
     check("unpublish takes it back down", !(await log.setPublished(owner, j1, false)) && (await log.getLogEntry(j1, null)) === null);
 
     const gj = await finishedRun(guest);

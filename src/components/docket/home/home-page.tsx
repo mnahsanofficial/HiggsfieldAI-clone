@@ -1,0 +1,161 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { CostMeter } from "@/components/ui/cost-meter";
+import { Field, TextArea } from "@/components/ui/field";
+import { Segmented } from "@/components/ui/segmented";
+import { formatCredits } from "@/lib/credits/format";
+import type { ImageQuota } from "@/lib/jobs/image-quota";
+import type { LogEntry } from "@/lib/log/entries";
+import { Entry } from "../log/entry";
+import { RunRow } from "../log/list-row";
+import { ImageAllowance } from "../make/composer";
+import { ROUTES } from "../routes";
+
+// Home: one line about what Docket is, the make box, then the log: yours if you have one, and
+// the public log beneath (media first, list on request). Every number on it comes from the API.
+export function HomePage({
+  signedIn,
+  balanceTenths,
+  imageCostTenths,
+  quota,
+  mine,
+  publicEntries,
+  moveCount,
+}: {
+  signedIn: boolean;
+  balanceTenths: number;
+  imageCostTenths: number;
+  quota: ImageQuota;
+  mine: LogEntry[];
+  publicEntries: LogEntry[];
+  moveCount: number;
+}) {
+  const router = useRouter();
+  const [prompt, setPrompt] = useState("");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [view, setView] = useState<"media" | "list">("media");
+  const allowance = Math.min(quota.siteLeft, quota.yoursLeft);
+  const short = imageCostTenths > balanceTenths;
+
+  async function make() {
+    setError(null);
+    setPending(true);
+    try {
+      if (!signedIn) {
+        const g = await fetch("/api/auth/guest", { method: "POST" });
+        if (!g.ok) throw new Error((await g.json().catch(() => ({}))).message ?? "Couldn't start a session. Try again in a minute.");
+      }
+      const res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vertical: "image", modelId: "flux_1_schnell", prompt: prompt.trim(), aspect: "1:1", resolution: "1K", batchSize: 1 }),
+      });
+      const out = await res.json().catch(() => ({}));
+      if (res.status !== 201) throw new Error(out.message ?? "That didn't go through. Nothing was charged. Try again.");
+      // The run is on the record now; /make is where it lands and where the loop continues.
+      router.push(ROUTES.make);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Nothing was charged.");
+      setPending(false);
+    }
+  }
+
+  const shown = mine.length ? mine : publicEntries;
+
+  return (
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-12 px-4 py-8 sm:py-12">
+      <section aria-labelledby="home-heading" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
+        <div className="flex flex-col gap-4">
+          <h1 id="home-heading" className="t-display max-w-2xl">
+            Make an image, then move the camera over it. Every run stays on the record.
+          </h1>
+          <p className="t-body max-w-xl text-muted">
+            Images come from FLUX.1 [schnell] when you ask. The {moveCount} camera moves are rendered over them with ffmpeg, frame by frame.
+          </p>
+        </div>
+
+        <form
+          className="flex flex-col gap-4 rounded-2xl bg-field p-4 sm:p-5"
+          aria-label="Make an image"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (prompt.trim() && allowance > 0 && !short) void make();
+          }}
+        >
+          <Field id="home-prompt" label="Describe the image">
+            <TextArea id="home-prompt" rows={3} maxLength={2000} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="A lighthouse on black rocks at dusk, storm clouds, long exposure" />
+          </Field>
+          <ImageAllowance quota={quota} />
+          {allowance > 0 && <CostMeter costTenths={imageCostTenths} balanceTenths={balanceTenths} />}
+          {short && allowance > 0 ? (
+            <ButtonLink href={ROUTES.credits} size="lg">
+              Get more credits
+            </ButtonLink>
+          ) : (
+            <Button type="submit" size="lg" pending={pending} disabled={!prompt.trim() || allowance === 0}>
+              Make the image
+            </Button>
+          )}
+          {error && (
+            <p role="alert" className="t-body text-charged">
+              {error}
+            </p>
+          )}
+          {!signedIn && <p className="t-meta">No account needed: you start with {formatCredits(balanceTenths)} free credits.</p>}
+        </form>
+      </section>
+
+      <section aria-labelledby="log-heading" className="flex flex-col gap-6">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 id="log-heading" className="t-title">
+              {mine.length ? "Your latest runs" : "The public log"}
+            </h2>
+            <p className="t-meta mt-1">
+              {mine.length ? "Private unless you publish them." : "Library images, and runs their makers chose to publish. Nothing is public unless someone publishes it."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-end gap-4">
+            <Segmented
+              name="home-view"
+              label="View"
+              hideLabel
+              value={view}
+              onChange={setView}
+              options={[
+                { value: "media", label: "Media" },
+                { value: "list", label: "List" },
+              ]}
+            />
+            {mine.length > 0 && (
+              <Link href={ROUTES.log} className="t-meta underline underline-offset-2 hover:text-ink">
+                Open your log
+              </Link>
+            )}
+          </div>
+        </div>
+
+        {view === "media" ? (
+          <ol className="grid gap-x-8 gap-y-12 md:grid-cols-2">
+            {shown.map((e) => (
+              <li key={e.id}>
+                <Entry entry={e} onMoveCamera={(a) => router.push(`${ROUTES.make}?still=${a.id}`)} />
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <ol className="flex max-w-[760px] flex-col gap-2">
+            {shown.map((e) => (
+              <RunRow key={e.id} entry={e} />
+            ))}
+          </ol>
+        )}
+      </section>
+    </main>
+  );
+}

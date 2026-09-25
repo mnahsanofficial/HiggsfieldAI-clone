@@ -24,9 +24,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | 2 | `feat/design-system` | done (PR #23) |
 | 3 | `feat/make` create flow (image → camera move) | done (PR #24) |
 | 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | done |
-| 4a | `feat/image-quota` (owner: free tier, 5/visitor/day, show the real count) | done |
-| 5 | `feat/home` (Docket home at its own path) | **next** |
-| 6 | credits, checkout, auth (lean restyle; AHSAN345 keeps working) | todo |
+| 4a | `feat/image-quota` (owner: free tier, 5/visitor/day, show the real count) | done (PR #26) |
+| 5 | `feat/home` (Docket home at `/next`) | done |
+| 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | **next** |
 | 7 | switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
 | 8 | README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
 
@@ -41,6 +41,11 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Home (PR #27)
+- `/next` (`app/(docket)/next`, `components/docket/home/home-page.tsx`): one line, the make box with the real allowance and price, then your latest runs or the public log, media first with a list toggle. Making from home lands the run on `/make`. Moves to `/` at switch-over.
+- Privacy fix in the read model: `balanceAfterTenths` is null on every copy of a run but the owner's (it leaked through `/api/log?scope=public` before). `verify-log` asserts it.
+- e2e: `node scripts/dev/ui-home-e2e.mjs <base> [dir] [--mobile]` (7 checks, fixture server only).
 
 ## Image allowance (PR #26)
 Owner's decision: **stay on the free tier.** Cloudflare gives 10,000 neurons/day; FLUX.1 schnell at 1024² and 4 steps costs 172.8 neurons (4 tiles × 4.8 + 4 tiles × 4 steps × 9.6), so **57 images/day**. That matches the 58th call on 2026-09-25 being refused.
