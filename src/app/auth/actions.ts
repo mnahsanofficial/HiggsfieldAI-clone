@@ -1,11 +1,9 @@
 "use server";
 
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createGuest, registerUser, signIn } from "@/lib/auth/accounts";
+import { registerUser, signIn } from "@/lib/auth/accounts";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { createSession, destroySession } from "@/lib/auth/session";
-import { clientIp } from "@/lib/jobs/image-quota";
 import { ROUTES } from "@/components/docket/routes";
 
 export type AuthFormState = { error?: string; field?: "email" | "password" | "name"; email?: string } | undefined;
@@ -34,15 +32,6 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
   const email = String(formData.get("email") ?? "");
   const result = await signIn(email, String(formData.get("password") ?? ""));
   if (!result.ok) return { error: result.error, email };
-  await createSession(result.userId);
-  redirect(safeNext(formData.get("next")));
-}
-
-export async function guestAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
-  const current = await getCurrentUser();
-  if (current) redirect(safeNext(formData.get("next")));
-  const result = await createGuest(clientIp(await headers()));
-  if (!result.ok) return { error: result.error };
   await createSession(result.userId);
   redirect(safeNext(formData.get("next")));
 }

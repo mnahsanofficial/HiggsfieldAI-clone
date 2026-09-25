@@ -60,7 +60,7 @@ export function CreditsPage({
           <p className="t-body text-muted">
             Enough for {Math.floor(balance / imageCostTenths)} images or {Math.floor(balance / videoCostTenths)} camera moves. Free images are also limited to {perVisitorImages} a day per visitor, because this deployment shares one free allowance.
           </p>
-          <Link href={`${ROUTES.log}?view=list`} className="t-meta underline underline-offset-2 hover:text-ink">
+          <Link href={`${ROUTES.log}?view=list`} className="t-meta inline-block self-start py-2 underline underline-offset-2 hover:text-ink">
             See every credit in and out, in your log
           </Link>
         </div>

@@ -19,7 +19,7 @@ import type { FallbackReason } from "@/lib/render/policy";
 export type LogAsset = {
   id: string;
   kind: "image" | "video";
-  source: "generated" | "rendered" | "sample" | "upload";
+  source: "generated" | "rendered" | "prerendered" | "sample" | "upload";
   url: string;
   posterUrl: string | null;
   width: number;

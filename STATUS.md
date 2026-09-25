@@ -26,9 +26,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | done |
 | 4a | `feat/image-quota` (owner: free tier, 5/visitor/day, show the real count) | done (PR #26) |
 | 5 | `feat/home` (Docket home at `/next`) | done (PR #27) |
-| 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | done |
-| 7 | **next**: switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
-| 8 | README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
+| 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | done (PR #28) |
+| 7 | done: switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
+| 8 | **next**: README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
 
 Owner's changes to the chosen direction, to hold to while building:
 - media leads, the receipt supports: the image/video is the largest thing in an entry, the
@@ -41,6 +41,15 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Switch-over (PR #29)
+- Docket is the app: routes at the app root (`/`, `/make`, `/log`, `/log/<id>`, `/credits`, `/sign-in`, `/sign-up`, `/style`). Home lives in `app/(home)` and the log list in `app/log/(list)` so their loading boundaries don't stream other routes before `notFound()` can set 404.
+- The root layout is Docket's shell (header, skip link, `.docket` on body). The legacy UI, its components and its e2e scripts are deleted, not hidden. `/api/assets` is gone (Docket deletes through `/api/log/<id>`).
+- Redirects in `next.config.ts`: `/ai/image`, `/ai/video` (with `image`/`preset`), `/ai/*`, `/assets`, `/pricing`, `/login`, `/signup`, `/explore`. Query strings carry over.
+- Identity: no Higgsfield name, copy, colours (lime removed from tokens), components or nav in the running app. Session cookie is `docket_session`; the old `hf_session` is still read so no guest's runs are stranded, and it's replaced on the next sign-in. `package.json` name is `docket`. New `app/icon.svg`.
+- `asset_source` gained `prerendered` (0004, committed on its own because Postgres won't use a new enum value in the transaction that adds it); video examples moved to it (0005). Legacy image stand-ins stay `sample`.
+- `db/index.ts`: pool `error` listener (an idle connection dropping was an uncaught exception that could kill the process), idle and connect timeouts.
+- Readiness: `node scripts/dev/readiness.mjs <base> [dir]` (fresh browser, signed out, 390 and 1440, makes nothing; safe on production).
 
 ## Credits and auth (PR #28)
 - `/next/credits` (`components/docket/credits/*`): balance and what it buys, account (guest → create an account; registered → sign out), plans from `listPlans()` (now with `imageCount`/`videoCount`), demo checkout in a Sheet. Card helpers live in `lib/billing/card-format.ts`. AHSAN345 unchanged; once-per-plan unchanged.

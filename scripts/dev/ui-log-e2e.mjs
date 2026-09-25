@@ -24,7 +24,7 @@ const text = (page, sel = "main") => page.$eval(sel, (m) => m.innerText).catch((
 const clickExact = (page, sel, t) => page.evaluate((s, x) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); if (!el) throw new Error(`no ${s} "${x}"`); el.click(); }, sel, t);
 const tsx = (...args) => JSON.parse(execFileSync("npx", ["tsx", "--conditions", "react-server", ...args], { encoding: "utf8" }).trim().split("\n").pop());
 
-const sessionUser = async (page) => JSON.parse(Buffer.from((await page.cookies()).find((c) => c.name === "hf_session").value.split(".")[1], "base64url").toString()).sub;
+const sessionUser = async (page) => JSON.parse(Buffer.from((await page.cookies()).find((c) => c.name === "docket_session").value.split(".")[1], "base64url").toString()).sub;
 const fixtureRun = (userId, prompt) => tsx("scripts/dev/fixture-run.ts", userId, prompt);
 
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: mkdtempSync(join(tmpdir(), "hf-log-")), args: ["--no-first-run"] });
@@ -83,7 +83,7 @@ try {
   const op = await owner.newPage();
   await op.setViewport(vp);
   await op.goto(`${base}/make`, { waitUntil: "load" });
-  await op.setCookie({ name: "hf_session", value: testUser.token, url: base });
+  await op.setCookie({ name: "docket_session", value: testUser.token, url: base });
   const r = fixtureRun(testUser.userId, "a brass telescope on a rooftop at dawn, city haze");
   await op.goto(`${base}/log`, { waitUntil: "load" });
   await op.waitForSelector(`[data-entry="${r.id}"] img`);

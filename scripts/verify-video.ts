@@ -68,13 +68,13 @@ async function main() {
     await video.runVideoJob(b.jobId, Date.now() - 290_000);
     check("over-budget live render: render_budget, refunded", (await job(b.jobId)).errorCode === "render_budget" && (await balance(r)) === before);
 
-    // 3. Expensive presets are always pre-rendered: free, succeeded, labelled sample.
+    // 3. Expensive presets are always pre-rendered: free, succeeded, labelled prerendered.
     for (const presetId of ["rack-focus-in", "arc-pan-left"]) {
       const bal = await balance(r);
       const c = await video.submitVideoJob(r, input(presetId));
       const jc = await job(c.jobId);
       const [ca] = await db.select().from(S.assets).where(eq(S.assets.jobId, c.jobId));
-      check(`${presetId}: pre-rendered (expensive_preset), free, labelled`, !c.live && c.reason === "expensive_preset" && c.costTenths === 0 && jc.status === "succeeded" && ca?.source === "sample" && ca.presetId === presetId && (await balance(r)) === bal);
+      check(`${presetId}: pre-rendered (expensive_preset), free, labelled`, !c.live && c.reason === "expensive_preset" && c.costTenths === 0 && jc.status === "succeeded" && ca?.source === "prerendered" && ca.presetId === presetId && (await balance(r)) === bal);
       const [{ charges }] = await db.select({ charges: sql<number>`count(*)::int` }).from(S.creditLedger).where(eq(S.creditLedger.jobId, c.jobId));
       check(`${presetId}: no ledger row at all`, charges === 0);
     }

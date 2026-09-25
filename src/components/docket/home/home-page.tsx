@@ -92,7 +92,11 @@ export function HomePage({
           </Field>
           <ImageAllowance quota={quota} />
           {allowance > 0 && <CostMeter costTenths={imageCostTenths} balanceTenths={balanceTenths} />}
-          {short && allowance > 0 ? (
+          {allowance === 0 ? (
+            <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
+              Move the camera over a library image
+            </ButtonLink>
+          ) : short ? (
             <ButtonLink href={ROUTES.credits} size="lg">
               Get more credits
             </ButtonLink>
@@ -133,7 +137,7 @@ export function HomePage({
               ]}
             />
             {mine.length > 0 && (
-              <Link href={ROUTES.log} className="t-meta underline underline-offset-2 hover:text-ink">
+              <Link href={ROUTES.log} className="t-meta inline-block py-2 underline underline-offset-2 hover:text-ink">
                 Open your log
               </Link>
             )}

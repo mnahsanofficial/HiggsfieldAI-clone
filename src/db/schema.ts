@@ -40,7 +40,8 @@ export const assetCollection = pgEnum("asset_collection", ["seed", "render_libra
 export const assetSource = pgEnum("asset_source", [
   "generated", // produced by an image model from the user's prompt
   "rendered", // a real camera-motion render over a still
-  "sample", // stand-in served when a provider was unavailable; never charged
+  "prerendered", // a pre-rendered example of a camera move, served free when live rendering is capped
+  "sample", // legacy: image stand-ins from before the backend audit; none are written any more
   "upload",
 ]);
 export const modelBadge = pgEnum("model_badge", ["top", "new"]);

@@ -17,7 +17,7 @@ export function PublishControl({ id, published: initial, registered }: { id: str
     return (
       <span className="flex flex-wrap items-center gap-2">
         <Tag tone="outline">Private</Tag>
-        <Link href={ROUTES.signUp} className="t-meta underline underline-offset-2 hover:text-ink">
+        <Link href={ROUTES.signUp} className="t-meta inline-block py-2 underline underline-offset-2 hover:text-ink">
           Create an account to publish
         </Link>
       </span>

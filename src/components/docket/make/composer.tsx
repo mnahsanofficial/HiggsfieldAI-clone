@@ -181,13 +181,13 @@ export function ImageAllowance({ quota: q }: { quota: ImageQuota }) {
   if (!q.testMode && q.siteLeft === 0) {
     line = (
       <>
-        <span className="font-semibold text-ink">No free images left today.</span> The daily limit for this deployment resets at 00:00 UTC, in {q.resetsIn}.
+        <span className="font-semibold text-ink">No free images left today.</span> The daily limit for this deployment resets at 00:00 UTC, in {q.resetsIn}. Camera moves don&apos;t use it, so they still work.
       </>
     );
   } else if (q.yoursLeft === 0) {
     line = (
       <>
-        <span className="font-semibold text-ink">You&apos;ve made your {q.perVisitor} free images today.</span> More at 00:00 UTC, in {q.resetsIn}.
+        <span className="font-semibold text-ink">You&apos;ve made your {q.perVisitor} free images today.</span> More at 00:00 UTC, in {q.resetsIn}. Camera moves still work.
         {!q.testMode && ` ${q.siteLeft} ${plural(q.siteLeft)} left for everyone else.`}
       </>
     );

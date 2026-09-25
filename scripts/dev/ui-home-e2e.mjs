@@ -26,7 +26,7 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
-  await page.goto(`${base}/next`, { waitUntil: "load", timeout: 60000 });
+  await page.goto(`${base}/`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("[data-entry]");
   const home = await text(page);
   if (!(await page.$eval("[data-quota]", (e) => e.innerText)).startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
@@ -47,11 +47,11 @@ try {
   await page.waitForFunction(() => location.pathname === "/make", { timeout: 30000 });
   await page.waitForSelector("[data-entry]");
   check("making from home lands the run on /make", (await page.$eval("[data-entry]", (e) => e.innerText)).includes("hand-bound notebooks"));
-  const token = (await page.cookies()).find((c) => c.name === "hf_session")?.value;
+  const token = (await page.cookies()).find((c) => c.name === "docket_session")?.value;
   guestId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
   await page.waitForFunction(() => !document.querySelector('[data-entry][aria-busy="true"]'), { timeout: 60000 });
 
-  await page.goto(`${base}/next`, { waitUntil: "load" });
+  await page.goto(`${base}/`, { waitUntil: "load" });
   await page.waitForSelector("[data-entry]");
   const back = await text(page);
   check("home now shows your latest runs, private unless published", back.includes("Your latest runs") && back.includes("hand-bound notebooks") && back.includes("Private unless you publish them") && back.includes("You can make 4 more today"));

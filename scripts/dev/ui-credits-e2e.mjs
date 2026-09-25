@@ -31,7 +31,7 @@ try {
   await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
   page.on("request", (r) => sent.push(`${r.method()} ${r.url()} ${r.postData() ?? ""}`));
 
-  await page.goto(`${base}/next/credits`, { waitUntil: "networkidle0", timeout: 60000 });
+  await page.goto(`${base}/credits`, { waitUntil: "networkidle0", timeout: 60000 });
   const start = await text(page);
   check("signed out: what you start with, and three plans with what their credits buy", start.includes("You start with") && start.includes("100 credits") && (start.match(/credits a month/g) ?? []).length === 3 && start.includes("Enough for 300 images or 20 camera moves"), start.replace(/\s+/g, " ").slice(0, 120));
   check("payments are named as a demo before anything is chosen", start.includes("Checkout is a labelled demo with a test card"));
@@ -77,7 +77,7 @@ try {
   await shot(page, "5-done");
   await clickExact(page, "dialog[open] button", "Done");
   check("Pro is marked as your plan", (await text(page)).includes("Your plan"));
-  const token = (await page.cookies()).find((c) => c.name === "hf_session")?.value;
+  const token = (await page.cookies()).find((c) => c.name === "docket_session")?.value;
   guestId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
 
   // Once per plan: Basic grants its credits, going back to Pro grants nothing.

@@ -104,7 +104,7 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
         userId,
         jobId: job.id,
         kind: "video",
-        source: "sample",
+        source: "prerendered",
         url: clip.url,
         posterUrl: clip.posterUrl,
         width: clip.width,

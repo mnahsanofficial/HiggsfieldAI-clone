@@ -150,7 +150,7 @@ export function RunRecord({ initial, registered }: { initial: LogEntry; register
             <p className="t-meta">{confirmDelete ? "This removes the output and takes it off the public log. The run stays on the record." : "The run stays on the record, with what it cost."}</p>
           </div>
         )}
-        <Link href={e.mine ? ROUTES.log : ROUTES.make} className="t-meta underline underline-offset-2 hover:text-ink">
+        <Link href={e.mine ? ROUTES.log : ROUTES.make} className="t-meta inline-block self-start py-2 underline underline-offset-2 hover:text-ink">
           {e.mine ? "Back to your log" : "Make your own"}
         </Link>
       </aside>
