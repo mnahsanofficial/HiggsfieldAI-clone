@@ -8,6 +8,7 @@ import { Segmented } from "@/components/ui/segmented";
 import { useReducedMotion } from "@/components/ui/use-reduced-motion";
 import { formatCredits } from "@/lib/credits/format";
 import type { MakeModel, MakeMove, MakeStill } from "@/lib/docket/make-data";
+import type { ImageQuota } from "@/lib/jobs/image-quota";
 import { ROUTES } from "../routes";
 
 export type Mode = "image" | "move";
@@ -23,6 +24,7 @@ export type ComposerProps = {
   onAspect: (a: string) => void;
   batch: number;
   onBatch: (n: number) => void;
+  quota: ImageQuota;
   still: MakeStill | null;
   move: MakeMove;
   moveAspect: string;
@@ -43,8 +45,11 @@ export type ComposerProps = {
 // is drawn against your balance before you press anything.
 export function Composer(p: ComposerProps) {
   const reduced = useReducedMotion();
-  const short = p.costTenths > p.balanceTenths;
-  const canSubmit = p.mode === "image" ? p.prompt.trim().length > 0 : !!p.still;
+  const allowance = Math.min(p.quota.siteLeft, p.quota.yoursLeft);
+  const outOfImages = p.mode === "image" && allowance === 0;
+  // Out of today's images is the real blocker then: more credits wouldn't help.
+  const short = p.costTenths > p.balanceTenths && !outOfImages;
+  const canSubmit = p.mode === "image" ? p.prompt.trim().length > 0 && !outOfImages : !!p.still;
 
   return (
     <form
@@ -96,7 +101,7 @@ export function Composer(p: ComposerProps) {
               label="How many"
               value={String(p.batch)}
               onChange={(v) => p.onBatch(Number(v))}
-              options={Array.from({ length: p.image.maxBatch }, (_, i) => ({ value: String(i + 1), label: String(i + 1) }))}
+              options={Array.from({ length: p.image.maxBatch }, (_, i) => ({ value: String(i + 1), label: String(i + 1), disabled: i + 1 > Math.max(1, allowance) }))}
             />
           )}
         </>
@@ -143,7 +148,8 @@ export function Composer(p: ComposerProps) {
       )}
 
       <div className="flex flex-col gap-3">
-        <CostMeter costTenths={p.costTenths} balanceTenths={p.balanceTenths} state={p.meter} note={p.mode === "move" && p.willPrerender ? "(a pre-rendered example)" : undefined} />
+        {p.mode === "image" && <ImageAllowance quota={p.quota} />}
+        {!outOfImages && <CostMeter costTenths={p.costTenths} balanceTenths={p.balanceTenths} state={p.meter} note={p.mode === "move" && p.willPrerender ? "(a pre-rendered example)" : undefined} />}
         {short ? (
           <>
             <p className="t-body">
@@ -165,5 +171,45 @@ export function Composer(p: ComposerProps) {
         )}
       </div>
     </form>
+  );
+}
+
+// The real numbers for the free image allowance: what's left for everyone today, and for you.
+function ImageAllowance({ quota: q }: { quota: ImageQuota }) {
+  const plural = (n: number) => (n === 1 ? "image" : "images");
+  let line;
+  if (!q.testMode && q.siteLeft === 0) {
+    line = (
+      <>
+        <span className="font-semibold text-ink">No free images left today.</span> The daily limit for this deployment resets at 00:00 UTC, in {q.resetsIn}.
+      </>
+    );
+  } else if (q.yoursLeft === 0) {
+    line = (
+      <>
+        <span className="font-semibold text-ink">You&apos;ve made your {q.perVisitor} free images today.</span> More at 00:00 UTC, in {q.resetsIn}.
+        {!q.testMode && ` ${q.siteLeft} ${plural(q.siteLeft)} left for everyone else.`}
+      </>
+    );
+  } else if (q.testMode) {
+    line = (
+      <>
+        <span className="font-semibold text-ink">Test mode:</span> images come from the test fixture, so the daily allowance isn&apos;t spent. You can make {q.yoursLeft} more today.
+      </>
+    );
+  } else {
+    line = (
+      <>
+        <span className="font-semibold text-ink">
+          {q.siteLeft} free {plural(q.siteLeft)} left today
+        </span>{" "}
+        on this deployment, of {q.siteCapacity}. You can make {Math.min(q.yoursLeft, q.siteLeft)} more.
+      </>
+    );
+  }
+  return (
+    <p className="t-meta" role="status" data-quota={`${q.siteLeft}/${q.siteCapacity}/${q.yoursLeft}`}>
+      {line}
+    </p>
   );
 }

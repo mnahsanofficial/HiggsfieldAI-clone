@@ -27,7 +27,11 @@ const PRERENDER_REASON = {
 
 export function MakePage({ data, initialMode, initialStillId, initialMoveId, initialPrompt }: { data: MakeData; initialMode: Mode; initialStillId: string | null; initialMoveId: string | null; initialPrompt: string }) {
   const router = useRouter();
-  const { entries, balanceTenths, refresh } = useLog(data.entries, data.balanceTenths);
+  const log = useLog(data.entries, data.balanceTenths, { quota: data.quota });
+  const { entries, balanceTenths, refresh } = log;
+  const quota = log.quota ?? data.quota;
+  // Images you can make right now: the lower of what's left for everyone and what's left for you.
+  const allowance = Math.min(quota.siteLeft, quota.yoursLeft);
   const [signedIn, setSignedIn] = useState(data.signedIn);
 
   const [mode, setMode] = useState<Mode>(initialMode);
@@ -64,9 +68,11 @@ export function MakePage({ data, initialMode, initialStillId, initialMoveId, ini
     data.policy.mode === "prerendered" ? PRERENDER_REASON.kill_switch : data.policy.prerenderOnlyMotions.includes(move.motionType) ? PRERENDER_REASON.expensive_preset : liveLeft <= 0 ? PRERENDER_REASON.render_cap : null;
   const willPrerender = prerenderReason !== null;
 
+  // The batch actually on offer: never more than today's allowance.
+  const effectiveBatch = Math.max(1, Math.min(batch, allowance || 1));
   const costTenths =
     mode === "image"
-      ? priceJob(data.image.pricing, { resolution: data.image.resolutions[0], batchSize: batch }).costTenths
+      ? priceJob(data.image.pricing, { resolution: data.image.resolutions[0], batchSize: effectiveBatch }).costTenths
       : willPrerender
         ? 0
         : priceJob(data.video.pricing, { resolution: data.video.resolutions[0], batchSize: 1, durationS: data.video.durations[0] }).costTenths;
@@ -111,7 +117,8 @@ export function MakePage({ data, initialMode, initialStillId, initialMoveId, ini
     try {
       if (!(await ensureSession())) return;
       if (mode === "image") {
-        await commit({ vertical: "image", modelId: data.image.id, prompt: prompt.trim(), aspect, resolution: data.image.resolutions[0], batchSize: batch }, balanceTenths);
+        const ok = await commit({ vertical: "image", modelId: data.image.id, prompt: prompt.trim(), aspect, resolution: data.image.resolutions[0], batchSize: effectiveBatch }, balanceTenths);
+        if (!ok) await refresh(); // a refused submit may mean the numbers moved: show the real ones
       } else if (still) {
         const ok = await commit(
           { vertical: "video", modelId: data.video.id, presetId: move.id, inputAssetId: still.id, aspect: moveAspect, resolution: data.video.resolutions[0], durationS: data.video.durations[0] },
@@ -161,8 +168,9 @@ export function MakePage({ data, initialMode, initialStillId, initialMoveId, ini
           onPrompt={setPrompt}
           aspect={aspect}
           onAspect={setAspect}
-          batch={batch}
+          batch={effectiveBatch}
           onBatch={setBatch}
+          quota={quota}
           still={still}
           move={move}
           moveAspect={moveAspect}
@@ -203,7 +211,15 @@ export function MakePage({ data, initialMode, initialStillId, initialMoveId, ini
           <ol className="flex flex-col gap-10">
             {entries.map((e) => (
               <li key={e.id}>
-                <Entry entry={e} isNew={e.id === newId} busy={busyId === e.id} onMoveCamera={moveCameraOver} onCancel={() => act(e.id, "cancel")} onRetry={() => act(e.id, "retry")} />
+                <Entry
+                  entry={e}
+                  isNew={e.id === newId}
+                  busy={busyId === e.id}
+                  onMoveCamera={moveCameraOver}
+                  onCancel={() => act(e.id, "cancel")}
+                  // Only offer a retry that today's allowance can actually run.
+                  onRetry={e.vertical === "image" && Number(e.params?.batchSize ?? 1) > allowance ? undefined : () => act(e.id, "retry")}
+                />
               </li>
             ))}
           </ol>

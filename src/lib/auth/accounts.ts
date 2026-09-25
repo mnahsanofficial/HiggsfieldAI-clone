@@ -1,9 +1,9 @@
 import "server-only";
-import { createHash } from "node:crypto";
 import { and, count, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { systemEvents, users } from "@/db/schema";
 import { grantCredits, STARTER_CREDITS_TENTHS } from "@/lib/credits/ledger";
+import { hashIp } from "@/lib/jobs/image-quota";
 import { addExampleAssets } from "@/lib/library/examples";
 import { burnPasswordCheck, hashPassword, verifyPassword } from "./password";
 
@@ -84,7 +84,7 @@ export async function signIn(emailInput: string, password: string): Promise<Auth
 // One click, no email. Limited per IP so the shared image quota can't be drained by
 // scripting guest accounts; the IP is stored only as a keyed hash.
 export async function createGuest(ip: string | null): Promise<AuthResult> {
-  const ipHash = ip ? createHash("sha256").update(`${process.env.AUTH_SECRET}:${ip}`).digest("hex").slice(0, 32) : null;
+  const ipHash = hashIp(ip);
 
   if (ipHash) {
     const [{ recent }] = await db

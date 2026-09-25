@@ -7,6 +7,7 @@ import type { CurrentUser } from "@/lib/auth/current-user";
 import { STARTER_CREDITS_TENTHS } from "@/lib/credits/starter";
 import { listMyLog, listPublicLog, type LogEntry } from "@/lib/log/entries";
 import { renderPolicyFor } from "@/lib/render/policy";
+import { type ImageQuota, imageQuota } from "@/lib/jobs/image-quota";
 
 // Everything /make needs, read from Postgres in one pass: both models with their real prices
 // and limits, every camera move with its real preview render, the stills you can animate,
@@ -42,6 +43,7 @@ export type MakeData = {
   moves: MakeMove[];
   stills: MakeStill[];
   policy: Awaited<ReturnType<typeof renderPolicyFor>>;
+  quota: ImageQuota;
   entries: LogEntry[];
   publicEntries: LogEntry[];
 };
@@ -56,9 +58,9 @@ const toModel = (m: typeof models.$inferSelect): MakeModel => ({
   pricing: m.pricing,
 });
 
-export async function getMakeData(user: CurrentUser | null): Promise<MakeData> {
+export async function getMakeData(user: CurrentUser | null, ipHash: string | null): Promise<MakeData> {
   const preview = alias(assets, "preview");
-  const [modelRows, moveRows, seedRows, mineRows, entries, policy] = await Promise.all([
+  const [modelRows, moveRows, seedRows, mineRows, entries, policy, quota] = await Promise.all([
     db.select().from(models).where(and(eq(models.active, true), inArray(models.vertical, ["image", "video"]))).orderBy(asc(models.sort)),
     db
       .select({ p: presets, url: preview.url, posterUrl: preview.posterUrl, width: preview.width, height: preview.height })
@@ -81,6 +83,7 @@ export async function getMakeData(user: CurrentUser | null): Promise<MakeData> {
       : Promise.resolve([]),
     user ? listMyLog(user.id, { limit: 20 }) : Promise.resolve([]),
     renderPolicyFor(user?.id ?? null, user?.kind ?? null),
+    imageQuota(user?.id ?? null, ipHash),
   ]);
 
   const image = modelRows.find((m) => m.vertical === "image");
@@ -103,6 +106,7 @@ export async function getMakeData(user: CurrentUser | null): Promise<MakeData> {
     })),
     stills: [...mineRows.map((s) => ({ ...s, mine: true })), ...seedRows.map((s) => ({ ...s, mine: false }))],
     policy,
+    quota,
     entries,
     // A new visitor's log is empty, so the page shows the public log beneath the invitation.
     publicEntries: entries.length ? [] : await listPublicLog(user?.id ?? null, { limit: 6 }),

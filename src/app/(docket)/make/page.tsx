@@ -1,6 +1,8 @@
 import { MakePage } from "@/components/docket/make/make-page";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getMakeData } from "@/lib/docket/make-data";
+import { clientIp, hashIp } from "@/lib/jobs/image-quota";
+import { headers } from "next/headers";
 
 export const metadata = { title: "Make" };
 
@@ -9,7 +11,7 @@ export const metadata = { title: "Make" };
 export default async function Make({ searchParams }: PageProps<"/make">) {
   const q = await searchParams;
   const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : null);
-  const data = await getMakeData(await getCurrentUser());
+  const data = await getMakeData(await getCurrentUser(), hashIp(clientIp(await headers())));
   const stillId = one(q.still);
   return (
     <MakePage

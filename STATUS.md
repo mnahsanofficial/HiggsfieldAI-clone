@@ -12,7 +12,7 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 - **Paywall:** a 402 in either studio opens "Upgrade plan to buy credits" (recon 23) with the real shortfall. Basic/Pro/Max show credits translated into outcomes and annual prices with the monthly price struck through. Choosing a plan is a labelled demo (no payment): it switches the plan and grants that plan's credits, at most once per plan per user. Also at `/pricing`, and via Get more credits on `/credits`.
 - **Assets:** `/assets` shows everything the user made (examples badged), filter by type; lightbox Download / Animate / Reuse (prefills `/ai/image?prompt=`) / Delete (confirm; soft delete).
 
-## Plan — redesign (Docket)
+## Plan: redesign (Docket), order changed 2026-09-25: switch-over before README, both this session
 
 The brief changed on 2026-09-25: keep the idea and the backend, rebuild the frontend as my own
 design, and make sure nothing reads as mock data. Direction 2 ("the run log") was chosen, named
@@ -24,11 +24,11 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | 2 | `feat/design-system` | done (PR #23) |
 | 3 | `feat/make` create flow (image → camera move) | done (PR #24) |
 | 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | done |
-| 5 | `feat/home` | **next** |
-| 6 | credits, paywall, checkout | todo |
-| 7 | auth screens | todo |
-| 8 | switch-over, old UI removed | todo |
-| 9 | README and readiness check | todo |
+| 4a | `feat/image-quota` (owner: free tier, 5/visitor/day, show the real count) | done |
+| 5 | `feat/home` (Docket home at its own path) | **next** |
+| 6 | credits, checkout, auth (lean restyle; AHSAN345 keeps working) | todo |
+| 7 | switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
+| 8 | README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
 
 Owner's changes to the chosen direction, to hold to while building:
 - media leads, the receipt supports: the image/video is the largest thing in an entry, the
@@ -42,8 +42,12 @@ Owner's changes to the chosen direction, to hold to while building:
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 
-## ⚠ Image quota (2026-09-25)
-Cloudflare Workers AI free allocation is 10,000 neurons/day, which is **about 40 FLUX.1 schnell images a day at 4 steps (already the minimum), shared by production and local tests**. It ran out at 12:17 UTC on 2026-09-25, mostly spent by e2e runs; production image generation fails honestly (refund + reset time) until 00:00 UTC. **Tests must not spend it**: use `scripts/dev/fixture-run.ts` (marked fixtures, real ledger charge, deleted with the test account). `ui-make-e2e` is the one test that makes real images (about 6); run it sparingly. Raising the limit needs Workers Paid (real money: owner's decision).
+## Image allowance (PR #26)
+Owner's decision: **stay on the free tier.** Cloudflare gives 10,000 neurons/day; FLUX.1 schnell at 1024² and 4 steps costs 172.8 neurons (4 tiles × 4.8 + 4 tiles × 4 steps × 9.6), so **57 images/day**. That matches the 58th call on 2026-09-25 being refused.
+- `image_usage` (day, calls, `CHECK calls BETWEEN 0 AND 57`); `reserveImageCall()` before every real provider call; a real Cloudflare quota error sets the day to 57 (`markImagesExhausted`).
+- Per visitor 5/day (per account), per network 20/day (per IP hash on `generation_jobs.client_ip_hash`), checked at submit with the user row locked, before any charge (`DailyLimitError` → 429 `daily_limit`).
+- `/make` shows the real numbers ("N free images left today on this deployment, of 57. You can make N more."); `/api/log` returns `quota`.
+- **Tests never spend the allowance.** `IMAGE_PROVIDER=fixture` (honoured only off Vercel) swaps in `providers/fixture.ts` (a seed image, 1.5 s latency, jobs recorded `provider_key 'test-fixture'`, site check skipped, page says "Test mode"). `verify-jobs` forces it; `ui-make-e2e` refuses to run unless the page says Test mode. Start the test server with `IMAGE_PROVIDER=fixture npx next start -p 3100`.
 
 ## Log (PR #25)
 - `/log` (`app/(docket)/log/(list)`): media view by default, list view (`?view=list`) interleaving runs with credit events and the balance after each; filters; "Show older runs". Signed out it's an invitation plus the public log.

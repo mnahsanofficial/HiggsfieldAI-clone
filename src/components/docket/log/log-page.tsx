@@ -41,6 +41,7 @@ export function LogPage({
   const [filter, setFilter] = useState<Filter>("all");
   const [view, setViewState] = useState<View>(initialView);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [actError, setActError] = useState<string | null>(null);
 
   const setView = (v: View) => {
     setViewState(v);
@@ -59,7 +60,12 @@ export function LogPage({
 
   async function act(id: string, action: "cancel" | "retry") {
     setBusyId(id);
-    await fetch(`/api/jobs/${id}/${action}`, { method: "POST" });
+    setActError(null);
+    const res = await fetch(`/api/jobs/${id}/${action}`, { method: "POST" });
+    if (!res.ok) {
+      const out = await res.json().catch(() => ({}));
+      setActError(out.message ?? (action === "cancel" ? "That run couldn't be stopped. It may have just finished." : "That run couldn't be started again. Nothing was charged."));
+    }
     await log.refresh();
     router.refresh();
     setBusyId(null);
@@ -104,6 +110,12 @@ export function LogPage({
           ]}
         />
       </div>
+
+      {actError && (
+        <p role="alert" className="t-body max-w-[760px] rounded-xl bg-field p-4 text-charged">
+          {actError}
+        </p>
+      )}
 
       {shown.length === 0 && (
         <div className="flex max-w-xl flex-col items-start gap-3 rounded-xl bg-field p-5">

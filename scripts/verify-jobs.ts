@@ -1,9 +1,12 @@
-// Job pipeline checks against the configured database, the real Cloudflare provider and
-// real Vercel Blob (run: npx tsx --conditions react-server scripts/verify-jobs.ts).
-// Uses ~1 real generation and 1 upload. Deletes its test users, jobs and events afterwards.
+// Job pipeline checks against the configured database and real Vercel Blob
+// (run: npx tsx --conditions react-server scripts/verify-jobs.ts). The image provider is the
+// test fixture, forced below: the free daily allowance is shared with production, and tests
+// must never spend it. Uses 1 upload. Deletes its test users, jobs and events afterwards.
 import { loadEnvConfig } from "@next/env";
 
 loadEnvConfig(process.cwd());
+if (process.env.VERCEL) throw new Error("verify-jobs must not run on Vercel");
+process.env.IMAGE_PROVIDER = "fixture";
 
 async function main() {
   const { and, eq, inArray, sql } = await import("drizzle-orm");
@@ -13,6 +16,8 @@ async function main() {
   const jobs = await import("../src/lib/jobs/service");
   const storage = await import("../src/lib/storage");
   const { ProviderError } = await import("../src/lib/jobs/providers/types");
+  const { fixtureProvider } = await import("../src/lib/jobs/providers/fixture");
+  const quota = await import("../src/lib/jobs/image-quota");
 
   const results: [string, boolean, string?][] = [];
   const check = (name: string, ok: boolean, info?: string) => results.push([name, ok, info]);
@@ -42,7 +47,7 @@ async function main() {
   try {
     const u = await newUser();
 
-    // 1. Real generation: Cloudflare -> crop 16:9 -> Blob -> asset, charged 2 credits.
+    // 1. A generation through the whole pipeline (fixture provider) -> crop 16:9 -> Blob -> asset, charged 2 credits.
     const putsBefore = await puts();
     const t0 = Date.now();
     const a = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt, aspect: "16:9", resolution: "1K", batchSize: 1 });
@@ -50,20 +55,20 @@ async function main() {
     await jobs.runImageJob(a.jobId);
     const ja = await job(a.jobId);
     const [asset] = await db.select().from(S.assets).where(eq(S.assets.jobId, a.jobId));
-    check("real job succeeded", ja.status === "succeeded" && ja.progress === 100, `${ja.status} ${ja.errorCode ?? ""} ${ja.errorMessage ?? ""} in ${Date.now() - t0}ms`);
+    check("job succeeded, recorded as a fixture run", ja.providerKey === "test-fixture" && ja.status === "succeeded" && ja.progress === 100, `${ja.status} ${ja.errorCode ?? ""} ${ja.errorMessage ?? ""} in ${Date.now() - t0}ms`);
     check("asset is 1024x576 and labelled generated", asset?.width === 1024 && asset?.height === 576 && asset?.source === "generated");
     if (asset) {
       const media = await storage.readMedia(asset.url.replace(/^\/media\//, ""));
       const buf = media ? Buffer.from(await new Response(media.stream).arrayBuffer()) : Buffer.alloc(0);
       check("asset is served from private Blob as a JPEG", !!media && asset.url.startsWith("/media/generations/") && buf.subarray(0, 3).toString("hex") === "ffd8ff", `${asset.url.slice(0, 40)}…, ${buf.length} bytes`);
     }
-    if (!asset) throw new Error("real generation produced no asset; stopping");
+    if (!asset) throw new Error("generation produced no asset; stopping");
     check("exactly one upload reserved", (await puts()) === putsBefore + 1, `${putsBefore} -> ${await puts()}`);
 
     // 2. Identical prompt+aspect: served from provider_cache, no provider call, no upload.
     const b = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt, aspect: "16:9", resolution: "1K", batchSize: 1 });
     // Same provider key as the real one, so a cache miss would call this and fail the job.
-    await jobs.runImageJob(b.jobId, { provider: { ...failing("provider_error"), key: "cloudflare" } });
+    await jobs.runImageJob(b.jobId, { provider: { ...failing("provider_error"), key: fixtureProvider.key } });
     const [bAsset] = await db.select().from(S.assets).where(eq(S.assets.jobId, b.jobId));
     check("cache hit: succeeded without calling the provider", (await job(b.jobId)).status === "succeeded" && bAsset?.url === asset?.url);
     check("cache hit: no new upload", (await puts()) === putsBefore + 1);
@@ -129,17 +134,18 @@ async function main() {
     check("retry creates a linked, charged job", jr.retryOfJobId === d.jobId && (await balance(u)) === beforeQuota - 20);
     await jobs.cancelJob(u, r.jobId);
 
-    // 9. Active-job limit.
+    // 9. Active-job limit (its own account: the per-visitor daily cap is tested below).
+    const act = await newUser();
     const ids: string[] = [];
-    for (let i = 0; i < 4; i++) ids.push((await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} active ${i}`, aspect: "1:1", resolution: "1K", batchSize: 1 })).jobId);
+    for (let i = 0; i < 4; i++) ids.push((await jobs.submitImageJob(act, { modelId: "flux_1_schnell", prompt: `${prompt} active ${i}`, aspect: "1:1", resolution: "1K", batchSize: 1 })).jobId);
     let limited = false;
     try {
-      await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} fifth`, aspect: "1:1", resolution: "1K", batchSize: 1 });
+      await jobs.submitImageJob(act, { modelId: "flux_1_schnell", prompt: `${prompt} fifth`, aspect: "1:1", resolution: "1K", batchSize: 1 });
     } catch (err) {
       limited = err instanceof jobs.JobInputError && err.status === 429;
     }
     check("5th concurrent job refused with 429", limited);
-    for (const id of ids) await jobs.cancelJob(u, id);
+    for (const id of ids) await jobs.cancelJob(act, id);
 
     // 10. Validation and insufficient credits.
     let bad = 0;
@@ -179,6 +185,58 @@ async function main() {
     check("upload 1,501 refused and logged once", capped && capEvents === 1);
     await db.delete(S.blobUsage).where(eq(S.blobUsage.period, period));
     await db.delete(S.systemEvents).where(and(eq(S.systemEvents.kind, "blob_cap_reached"), sql`detail->>'period' = ${period}`));
+
+    // 12. Daily image allowance, all checked before any charge.
+    const v = await newUser();
+    const vb = await balance(v);
+    await jobs.submitImageJob(v, { modelId: "flux_1_schnell", prompt: `${prompt} q1`, aspect: "1:1", resolution: "1K", batchSize: 4 });
+    let tooMany: unknown = null;
+    try {
+      await jobs.submitImageJob(v, { modelId: "flux_1_schnell", prompt: `${prompt} q2`, aspect: "1:1", resolution: "1K", batchSize: 2 });
+    } catch (e) {
+      tooMany = e;
+    }
+    check("per visitor: 4 made, a batch of 2 is refused with 'You can make 1 more'", tooMany instanceof quota.DailyLimitError && /You can make 1 more image today/.test((tooMany as Error).message), (tooMany as Error)?.message);
+    await jobs.submitImageJob(v, { modelId: "flux_1_schnell", prompt: `${prompt} q3`, aspect: "1:1", resolution: "1K", batchSize: 1 });
+    let fifthDone: unknown = null;
+    try {
+      await jobs.submitImageJob(v, { modelId: "flux_1_schnell", prompt: `${prompt} q4`, aspect: "1:1", resolution: "1K", batchSize: 1 });
+    } catch (e) {
+      fifthDone = e;
+    }
+    check("per visitor: the 6th image is refused, saying when it resets", fifthDone instanceof quota.DailyLimitError && /made your 5 free images/.test((fifthDone as Error).message) && /00:00 UTC/.test((fifthDone as Error).message));
+    check("refused submits charged nothing (only the 5 accepted images)", (await balance(v)) === vb - 5 * 20, `${vb} -> ${await balance(v)}`);
+    const q = await quota.imageQuota(v, null);
+    check("quota read model: 0 left for this visitor", q.yoursLeft === 0 && q.perVisitor === 5);
+
+    // Per network: new guest sessions from one IP can't get around the per-visitor cap.
+    const ip = `verify-ip-${stamp}`;
+    const ipHash = quota.hashIp(ip);
+    let netRefused: unknown = null;
+    for (let i = 0; i < 5 && !netRefused; i++) {
+      const w = await newUser();
+      try {
+        await jobs.submitImageJob(w, { modelId: "flux_1_schnell", prompt: `${prompt} net ${i}`, aspect: "1:1", resolution: "1K", batchSize: 4, clientIpHash: ipHash });
+        await jobs.submitImageJob(w, { modelId: "flux_1_schnell", prompt: `${prompt} net ${i}b`, aspect: "1:1", resolution: "1K", batchSize: 1, clientIpHash: ipHash });
+      } catch (e) {
+        netRefused = e;
+      }
+    }
+    check("per network: after 20 images from one IP, a fresh guest is refused", netRefused instanceof quota.DailyLimitError && (netRefused as { scope?: string }).scope === "network", (netRefused as Error)?.message);
+
+    // Site-wide: the counter's CHECK is the hard stop (isolated test day, never the real one).
+    const day = `test-${stamp}`;
+    await db.insert(S.imageUsage).values({ day, calls: S.IMAGE_CALLS_PER_DAY - 1 });
+    const last = await quota.reserveImageCall(day);
+    let siteStop: unknown = null;
+    try {
+      await quota.reserveImageCall(day);
+    } catch (e) {
+      siteStop = e;
+    }
+    const [{ calls }] = await db.select({ calls: S.imageUsage.calls }).from(S.imageUsage).where(eq(S.imageUsage.day, day));
+    check(`site: call ${S.IMAGE_CALLS_PER_DAY} reserved, the next refused by the database, count stays ${S.IMAGE_CALLS_PER_DAY}`, last === S.IMAGE_CALLS_PER_DAY && siteStop instanceof quota.DailyLimitError && calls === S.IMAGE_CALLS_PER_DAY);
+    await db.delete(S.imageUsage).where(eq(S.imageUsage.day, day));
 
     check("ledger sum == balance for the test user", await invariant(u));
   } finally {
