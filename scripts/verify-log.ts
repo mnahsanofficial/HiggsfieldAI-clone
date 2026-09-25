@@ -17,6 +17,11 @@ async function main() {
   const users: string[] = [];
   const stamp = Date.now();
 
+  // Preset names show in every entry, so they follow the sentence-case rule: one capital, at the start.
+  const presetNames = (await db.select({ name: S.presets.name }).from(S.presets)).map((p) => p.name);
+  const titleCased = presetNames.filter((n) => /\s[A-Z]/.test(n) || n[0] !== n[0].toUpperCase());
+  check("every preset name is in sentence case", presetNames.length > 0 && titleCased.length === 0, titleCased.join(", ") || `${presetNames.length} presets`);
+
   const newUser = async (kind: "guest" | "registered") => {
     const id = await db.transaction(async (tx) => {
       const [u] = await tx

@@ -48,7 +48,7 @@ async function main() {
     const p4 = priceJob(flux.pricing, { resolution: "1K", batchSize: 4 });
     check("batch of 4 is 4x", p4.costTenths === 80, JSON.stringify(p4));
     const pv = priceJob(cam.pricing, { resolution: "1080p", batchSize: 1, durationS: 5 });
-    check("Camera Motion 5s/1080p: 45 credits, 80 struck (capture 17)", pv.costTenths === 450 && pv.listTenths === 800, JSON.stringify(pv));
+    check("Camera motion 5s/1080p: 45 credits, 80 struck (capture 17)", pv.costTenths === 450 && pv.listTenths === 800, JSON.stringify(pv));
 
     // Charge and insufficient funds.
     const a = await newUser(1000);

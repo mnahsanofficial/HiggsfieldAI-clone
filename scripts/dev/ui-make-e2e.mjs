@@ -40,7 +40,9 @@ try {
   await page.waitForSelector("#prompt");
   const body = await page.evaluate(() => document.body.innerText);
   check("signed out: make box, the invitation line and the public log", body.includes("Everything you make lands here") && body.includes("From the public log") && (await page.$$("[data-entry]")).length >= 3);
-  check("library entries are tagged as library, with no amount", !(await firstEntry(page)).includes("free") && (await firstEntry(page)).includes("From the library"));
+  // The public log leads with published runs, then the library; check a library entry itself.
+  const libraryEntry = await page.$$eval("[data-entry]", (es) => es.map((e) => e.innerText).find((t) => t.includes("From the library")) ?? "");
+  check("library entries are tagged as library, with no amount", !!libraryEntry && !/\bfree\b|charged|refunded/.test(libraryEntry));
   const allowanceLine = await page.$eval("[data-quota]", (e) => e.innerText);
   if (!allowanceLine.startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
   check("the allowance line shows your real remaining count (5 today)", allowanceLine.includes("You can make 5 more today"), allowanceLine);
@@ -55,10 +57,12 @@ try {
   await clickText(page, "form button[type=submit]", "Make the image");
   await page.waitForSelector('[data-state="committing"]', { timeout: 30000 });
   check("the commit: the meter drains", true);
-  await page.waitForSelector(".entry-new", { timeout: 15000 });
-  await new Promise((r) => setTimeout(r, 900));
+  // Poll rather than sleep: the fixture answers in 1.5s, so a fixed wait can land after it's done.
+  const sawPending = await page
+    .waitForFunction(() => { const e = document.querySelector("[data-entry]"); return e?.classList.contains("entry-new") && /Making the image/.test(e.innerText) && !!e.querySelector('[role="progressbar"]'); }, { timeout: 15000, polling: 50 })
+    .then(() => true, () => false);
   const pending = await firstEntry(page);
-  check("a new entry prints into the top of the log, pending, with progress", /Making the image/.test(pending) && !!(await page.$('[data-entry] [role="progressbar"]')), pending.split("\n")[0]);
+  check("a new entry prints into the top of the log, pending, with progress", sawPending, pending.split("\n")[0]);
   await shot(page, "2-pending");
   await page.waitForFunction((p) => [...document.querySelectorAll("[data-entry] img")].some((i) => i.alt === p && i.complete && i.naturalWidth > 0), { timeout: 90000 }, prompt);
   await page.waitForFunction(() => [...document.querySelectorAll("header a")].some((a) => a.textContent.startsWith("98 credits")), { timeout: 15000 }).catch(() => {});
@@ -79,8 +83,10 @@ try {
   await page.waitForFunction(() => document.querySelectorAll("dialog[open] ul li").length >= 14);
   const tags = await page.$$eval("dialog[open] li", (li) => li.filter((l) => l.innerText.includes("Pre-rendered only")).length);
   check("move picker: 14 moves with real previews; arcs and rack focus marked pre-rendered only", tags === 4, `${tags} marked`);
+  // Let the sheet finish its 180ms entrance, so the screenshot shows the sheet and not a crossfade.
+  await page.waitForFunction(() => document.querySelector("dialog[open]").getAnimations().every((a) => a.playState === "finished"));
   await shot(page, "4-moves");
-  await clickText(page, "dialog[open] li button", "Arc Pan Left");
+  await clickText(page, "dialog[open] li button", "Arc pan left");
   await page.waitForFunction(() => !document.querySelector("dialog[open]"));
   const btn = await page.$eval("form button[type=submit]", (b) => b.innerText);
   const costText = await page.$eval("form", (f) => f.innerText);
@@ -104,12 +110,12 @@ try {
 
   // 4. Optional live render (local only).
   if (process.env.E2E_LIVE === "1") {
-    await clickText(page, "form button", "Arc Pan Left");
+    await clickText(page, "form button", "Arc pan left");
     await page.waitForSelector("dialog[open]");
-    await clickText(page, "dialog[open] li button", "Slow Push In");
+    await clickText(page, "dialog[open] li button", "Slow push-in");
     await page.waitForFunction(() => !document.querySelector("dialog[open]"));
     await clickText(page, "form button[type=submit]", "Render the move");
-    await page.waitForFunction(() => document.querySelector("[data-entry]")?.innerText.includes("Slow Push In") && !document.querySelector("[data-entry]").getAttribute("aria-busy"), { timeout: 120000 });
+    await page.waitForFunction(() => document.querySelector("[data-entry]")?.innerText.includes("Slow push-in") && !document.querySelector("[data-entry]").getAttribute("aria-busy"), { timeout: 120000 });
     const live = await firstEntry(page);
     check("live render: compared against your own still, −30 charged", live.includes("−30") && live.includes("rendered with ffmpeg") && (await page.$eval("[data-entry]", (e) => e.innerText.includes("Still"))), live.replace(/\s+/g, " ").slice(0, 120));
     await page.$eval("[data-entry]", (e) => e.scrollIntoView({ block: "start" }));
