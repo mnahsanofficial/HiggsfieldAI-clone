@@ -47,10 +47,10 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 2. `feat/home-headline-pair` (PR #32): one-line h1 in the first HTML (home has no loading boundary); a real still-and-take pair with the handle (`lib/docket/home-pair.ts`, a featured live-renderable move's preview over its still); out of images → the camera-move action leads, quota note second. `scripts/seed-public-moves.ts` published 4 pre-rendered moves from a library account that can't sign in (`library@docket.invalid`).
 3. `feat/share-previews`: `/` and every public `/log/<id>` have og:title, og:description and a generated 1200×630 image (`lib/og/card.tsx`; the run's image, or a take's poster frame). Private runs: no og, noindex, image route 404. Titles cut at a word with an ellipsis (`lib/text.ts`). Readiness checks all of it.
 4. `fix/preset-names-sentence-case`: the 13 Title Case preset names and the video model ("Camera motion") are in sentence case, reseeded; `verify-log` fails on a Title Case preset. Still picker checked, left as-is: each button carries `aria-label` = the prompt, the image inside is `alt=""`, so the prompt is read once. Two stale `ui-make-e2e` checks fixed on the way: the library check assumed library entries lead the public log (published runs do since #32), and the pending check slept past the 1.5 s fixture on mobile (now polls).
-5. then: readiness on production at 390px and 1440px.
+5. `chore/readiness-after-fixes`: readiness on production at 390px and 1440px, **76/76**; screenshots refreshed. The reviewer-pass list is done.
 
 ## Where things stand (2026-09-25)
-- **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **72/72** (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
+- **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **76/76** on 2026-09-26 after the reviewer-pass fixes (#31–#34), including share previews and word-boundary titles (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
 - README rewritten for Docket (PR #30); the three directions as offered are in `docs/design-directions.md`.
 - Owner to-dos, not blocking:
   - The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) and the GitHub repo still carry the old name (dashboard actions). Old links keep working through the redirects.
