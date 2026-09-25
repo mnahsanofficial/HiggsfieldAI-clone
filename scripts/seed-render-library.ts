@@ -20,8 +20,10 @@ async function main() {
   const { readMedia, uploadMedia } = await import("../src/lib/storage");
 
   const images = new Map<string, Buffer>();
+  const stillIds = new Map<string, string>();
   for (const [aspect, s] of Object.entries(STILLS)) {
     const [seed] = await db.select().from(assets).where(and(isNull(assets.userId), like(assets.url, `/media/seed/${s.seed}-%`))).limit(1);
+    stillIds.set(aspect, seed.id);
     const media = await readMedia(seed.url.replace(/^\/media\//, ""));
     images.set(aspect, Buffer.from(await new Response(media!.stream).arrayBuffer()));
   }
@@ -49,6 +51,7 @@ async function main() {
         prompt: `${preset.name} (pre-rendered library, ${aspect})`,
         collection: "render_library",
         aspect,
+        sourceAssetId: stillIds.get(aspect),
         isPublic: false,
       });
       made++;

@@ -65,6 +65,7 @@ async function main() {
         prompt: `${preset.name} preview: ${seed.prompt ?? ""}`,
         collection: "preset_preview",
         aspect: "16:9",
+        sourceAssetId: seed.id,
         isPublic: true,
       })
       .returning({ id: assets.id });

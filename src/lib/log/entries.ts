@@ -26,6 +26,7 @@ export type LogAsset = {
   durationMs: number | null;
   aspect: string | null;
   prompt: string | null;
+  sourceAssetId: string | null;
 };
 
 export type LogEntry = {
@@ -51,8 +52,11 @@ export type LogEntry = {
   finishedAt: string | null;
   published: boolean;
   mine: boolean;
-  // A camera move keeps the still it moved over, so the entry can show them side by side.
+  // What the user picked to animate (a camera-move run), and the still the take was actually
+  // rendered over. They are the same for a live render; for a pre-rendered example the take
+  // was rendered over a library still, and the before/after view compares against that one.
   inputAsset: LogAsset | null;
+  renderedFrom: LogAsset | null;
   assets: LogAsset[];
 };
 
@@ -67,6 +71,7 @@ const assetCols = {
   durationMs: assets.durationMs,
   aspect: assets.aspect,
   prompt: assets.prompt,
+  sourceAssetId: assets.sourceAssetId,
 };
 
 const jobCols = {
@@ -114,15 +119,17 @@ type JobRow = {
 async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntry[]> {
   if (!jobs.length) return [];
   const ids = jobs.map((j) => j.id);
-  const inputIds = [...new Set(jobs.map((j) => j.inputAssetId).filter((x): x is string => !!x))];
+  const outputs = await db
+    .select({ ...assetCols, jobId: assets.jobId })
+    .from(assets)
+    .where(and(inArray(assets.jobId, ids), isNull(assets.deletedAt)))
+    .orderBy(assets.createdAt);
+  const stillIds = [
+    ...new Set([...jobs.map((j) => j.inputAssetId), ...outputs.map((o) => o.sourceAssetId)].filter((x): x is string => !!x)),
+  ];
 
-  const [outputs, inputs, money] = await Promise.all([
-    db
-      .select({ ...assetCols, jobId: assets.jobId })
-      .from(assets)
-      .where(and(inArray(assets.jobId, ids), isNull(assets.deletedAt)))
-      .orderBy(assets.createdAt),
-    inputIds.length ? db.select(assetCols).from(assets).where(inArray(assets.id, inputIds)) : Promise.resolve([]),
+  const [stills, money] = await Promise.all([
+    stillIds.length ? db.select(assetCols).from(assets).where(inArray(assets.id, stillIds)) : Promise.resolve([]),
     db
       .select({
         jobId: creditLedger.jobId,
@@ -160,7 +167,8 @@ async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntr
       finishedAt: j.finishedAt?.toISOString() ?? null,
       published: !!j.publishedAt,
       mine: j.userId === viewerId,
-      inputAsset: inputs.find((a) => a.id === j.inputAssetId) ?? null,
+      inputAsset: stills.find((a) => a.id === j.inputAssetId) ?? null,
+      renderedFrom: stills.find((a) => a.id === outputs.find((o) => o.jobId === j.id && o.kind === "video")?.sourceAssetId) ?? null,
       assets: outputs.filter((a) => a.jobId === j.id).map(({ jobId: _jobId, ...a }) => a),
     } satisfies LogEntry;
   });
@@ -233,7 +241,8 @@ export async function listLibraryEntries(limit = 20): Promise<LogEntry[]> {
     published: true,
     mine: false,
     inputAsset: null,
-    assets: [{ id: a.id, kind: a.kind, source: a.source, url: a.url, posterUrl: a.posterUrl, width: a.width, height: a.height, durationMs: a.durationMs, aspect: a.aspect, prompt: a.prompt }],
+    renderedFrom: null,
+    assets: [{ id: a.id, kind: a.kind, source: a.source, url: a.url, posterUrl: a.posterUrl, width: a.width, height: a.height, durationMs: a.durationMs, aspect: a.aspect, prompt: a.prompt, sourceAssetId: null }],
   }));
 }
 

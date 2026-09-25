@@ -166,6 +166,10 @@ export const assets = pgTable(
     // Stored, not guessed from width/height, so lookups and the log read the same value
     // the job was submitted with.
     aspect: text("aspect"),
+    // For a rendered video: the still it was actually rendered over. A pre-rendered example
+    // was rendered over a library still, not the user's image, so the before/after view must
+    // compare against this, never against whatever the user picked.
+    sourceAssetId: uuid("source_asset_id").references((): AnyPgColumn => assets.id, { onDelete: "set null" }),
     isPublic: boolean("is_public").notNull().default(false),
     createdAt: createdAt(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
