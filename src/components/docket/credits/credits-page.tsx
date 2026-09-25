@@ -119,6 +119,11 @@ export function CreditsPage({
             <p className="t-meta mt-1 max-w-xl">
               A plan adds credits and raises how many images you can make a day. Every plan shares the same {limits.siteImagesPerDay} images a day this deployment gets, and the same live camera moves: rendering is server time, which paying doesn&apos;t add.
             </p>
+            {plans[0] && (
+              <p className="t-body mt-2 max-w-xl" data-testid="plans-moves">
+                On every plan: {plural(plans[0].liveRenders, "live camera move")} per account ({plans[0].liveRendersAsGuest} in a guest session) at {formatCredits(plans[0].videoCostTenths)} credits each, then pre-rendered examples, free.
+              </p>
+            )}
             <p className="t-meta mt-1 max-w-xl">Payments aren&apos;t part of this build. Checkout is a labelled demo with a test card: it adds the plan&apos;s credits once, and no money moves.</p>
           </div>
           <Segmented
@@ -155,10 +160,15 @@ export function CreditsPage({
                 <div className="t-body flex flex-col gap-1" data-testid={`plan-${p.id}-limits`}>
                   <p className="font-semibold">{formatCredits(p.monthlyCreditsTenths)} credits a month</p>
                   <p className="t-meta">
-                    Enough for {p.imageCount} images at {formatCredits(p.imageCostTenths)} credits each, <span className="font-semibold text-ink">up to {p.imagesPerDay} a day</span>.
-                  </p>
-                  <p className="t-meta">
-                    {plural(p.liveRenders, "live camera move")} per account ({p.liveRendersAsGuest} in a guest session) at {formatCredits(p.videoCostTenths)} credits each, then pre-rendered examples, free.
+                    {p.imageLimit === "credits" ? (
+                      <>
+                        Enough for {p.imageCount} images at {formatCredits(p.imageCostTenths)} credits each, <span className="font-semibold text-ink">up to {p.imagesPerDay} a day</span>.
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold text-ink">Up to {p.imagesPerDay} images a day</span>, so up to {p.imageCount} in a {p.daysInMonth}-day month at {formatCredits(p.imageCostTenths)} credits each. The daily cap runs out before the credits do.
+                      </>
+                    )}
                   </p>
                 </div>
                 <Button variant={current ? "secondary" : "primary"} disabled={current} className="mt-auto" onClick={() => setChosen(p)}>

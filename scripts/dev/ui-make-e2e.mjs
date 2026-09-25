@@ -34,15 +34,20 @@ const browser = await puppeteer.launch({ executablePath: CHROME, headless: true,
 try {
   const page = await browser.newPage();
   await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
+  const hydration = [];
+  page.on("console", (m) => /hydrat|did not match|server rendered/i.test(m.text()) && hydration.push(m.text().slice(0, 160)));
+  const times = () => page.$$eval("time", (ts) => ts.map((t) => t.textContent.trim()));
+  const ONE_FORMAT = /^\d{1,2} (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{4}, \d{2}:\d{2} UTC$/;
 
   // 1. A stranger lands on /make.
   await page.goto(`${base}/make`, { waitUntil: "load", timeout: 60000 });
   await page.waitForSelector("#prompt");
   const body = await page.evaluate(() => document.body.innerText);
   check("signed out: make box, the invitation line and the public log", body.includes("Everything you make lands here") && body.includes("From the public log") && (await page.$$("[data-entry]")).length >= 3);
-  // The public log leads with published runs, then the library; check a library entry itself.
-  const libraryEntry = await page.$$eval("[data-entry]", (es) => es.map((e) => e.innerText).find((t) => t.includes("From the library")) ?? "");
-  check("library entries are tagged as library, with no amount", !!libraryEntry && !/\bfree\b|charged|refunded/.test(libraryEntry));
+  // The public log leads with live runs, then examples, then the library: each says what it is.
+  const publicTexts = await page.$$eval("[data-entry]", (es) => es.map((e) => e.innerText));
+  const labelled = publicTexts.every((t) => (t.includes("From the library") && !/\bfree\b|charged|refunded/.test(t)) || (/Camera move: /.test(t) && (/−\d+\s*charged/.test(t) || (/0\s*free/.test(t) && /Pre-rendered example/.test(t)))));
+  check("public entries say what they are: library (no amount), live and charged, or a free pre-rendered example", publicTexts.length > 0 && labelled, `${publicTexts.length} entries`);
   const allowanceLine = await page.$eval("[data-quota]", (e) => e.innerText);
   if (!allowanceLine.startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
   check("the allowance line shows your real remaining count (5 today)", allowanceLine.includes("You can make 5 more today"), allowanceLine);
@@ -170,6 +175,18 @@ try {
   await page.$eval("main form", (f) => f.scrollIntoView({ block: "start" }));
   await page.evaluate(() => scrollBy(0, -80));
   await shot(page, "9-capped");
+
+  // 8. One date format everywhere: server-rendered entries and the ones added in the browser.
+  const stamps = await times();
+  check("every time in the log has the one format, zone stated", stamps.length >= 2 && stamps.every((t) => ONE_FORMAT.test(t)), `${stamps.length}: ${stamps.filter((t) => !ONE_FORMAT.test(t)).join(" | ") || [...new Set(stamps)].slice(0, 2).join(" | ")}`);
+  check("the camera move is titled by what happened", (await page.$$eval("[data-entry]", (es) => es.map((e) => e.innerText))).some((t) => /Camera move: (Arc pan left|Slow push-in)/.test(t)));
+
+  // 9. Out of images, /make opens where it can still do something: camera moves.
+  await page.reload({ waitUntil: "networkidle0" });
+  const selected = await page.$eval('main form input[name="mode"]:checked', (i) => i.value).catch(() => null);
+  check("out of images, /make opens in camera-move mode", selected === "move" && (await page.evaluate(() => document.body.innerText.includes("Image to animate"))), `${selected}`);
+  const after = await times();
+  check("after a full reload, the same one format (server and browser agree)", after.every((t) => ONE_FORMAT.test(t)) && hydration.length === 0, hydration[0] ?? `${after.length} times`);
 
 
 } catch (e) {

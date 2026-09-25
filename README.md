@@ -247,7 +247,7 @@ Measured CPU-seconds per 720p, 5-second render (local, user+sys; `scripts/dev/me
   - **Site-wide:** `image_usage` counts real provider calls per UTC day, with `CHECK (calls BETWEEN 0 AND 57)`. Every call reserves first. If Cloudflare says the allocation is gone before our count does, the day is marked used up.
   - **Per visitor, by plan:** 5 images a day on the free plan; a paid plan raises it (Basic 10, Pro 15, Max 20), always within the shared 57. The number lives in one place, `plans.images_per_day`: the cap enforces it, and every plan card, the starter copy and the make box read it. `scripts/verify-limits.ts` checks, plan by plan, that the card's number is the one the server refuses at, and that no limit is typed into the UI as a literal.
   - **Per network:** the highest plan cap (20) per IP address, stored only as a keyed hash. This stops new guest sessions from getting around the free cap, while someone alone on their network always gets their plan's full cap.
-  - **Live camera moves don't grow with a plan:** 1 in a guest session, 3 per account, on every plan. Rendering is server CPU, which paying doesn't add. Every plan card says so beside the credits.
+  - **Live camera moves don't grow with a plan:** 1 in a guest session, 3 per account, on every plan. Rendering is server CPU, which paying doesn't add. One line above the plan cards says so.
   - All of it is checked before anything is charged, so a refused request costs nothing and says when the limit resets.
 - **Shown, not hidden:** the make box reads "12 free images left today on this deployment, of 57. You can make 5 more". When they run out, it says so and points you to camera moves, which don't use the allowance.
 - **Tests never spend it.** An earlier round of UI tests used up a whole day's allocation, including production's share. Now `IMAGE_PROVIDER=fixture` (honoured only off Vercel) swaps in a test double that returns a library image, and records its runs as fixtures.
@@ -297,6 +297,9 @@ The money-like parts are enforced by the database, not by application convention
 - **Postgres won't use a new enum value inside the transaction that adds it,** and the migration tool applies migrations in one transaction. The new value is now added idempotently and committed on its own first.
 - **The database pool had no error listener.** An idle connection dropping was an uncaught exception that can take the process down. It's logged and discarded now.
 - **The seed data kept the reference's wording** (the plan taglines) after the switch to Docket. It was rewritten.
+- **Max still overpromised after that fix.** Its card said "Enough for 900 images", but 20 a day for 30 days is 600. Each card now states the smaller of what its credits buy and what its daily cap allows in a month, and says when the cap is what binds. `verify-limits` asserts that every plan's outcome is reachable within its own caps. The live-move sentence that repeated on every card is now one line above them.
+- **One log showed two date formats.** Entries rendered on the server read "15 Sept, 10:25 UTC"; ones added in the browser read "Sep 15, 04:24 PM". The component meant to switch to local time after hydration never re-rendered. There's one formatter now (`src/lib/time.ts`), built by hand rather than from locale data, so Node and every browser produce the same text: "15 Sep 2026, 10:25 UTC", always UTC, the same zone as the daily reset.
+- **The showcase was mostly pre-rendered.** Three of the four home tiles, and the "How it works" run, were examples of moves that never render live, so a reviewer could conclude the product serves canned clips. Three moves rendered live, with real charges, now lead the public log and the home page.
 - **My first design draft reached for defaults:** cream, serif and rust for Direction 1, and a dark stage with one hot accent for Direction 3. I caught those; you caught the all-caps labels.
 
 ---
@@ -376,7 +379,7 @@ Seed content:
 
 These run against the real database and storage, clean up after themselves, and never spend the image quota.
 
-- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log,limits}.ts` (128 checks)
+- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log,limits}.ts` (132 checks)
   - races and exactly-once refunds
   - the daily allowance
   - the render policy and kill switch

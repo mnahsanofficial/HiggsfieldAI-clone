@@ -11,8 +11,9 @@ import { Tag } from "@/components/ui/tag";
 import { formatCredits } from "@/lib/credits/format";
 import type { LogEntry } from "@/lib/log/entries";
 import { ROUTES } from "../routes";
-import { LocalTime } from "./local-time";
+import { RunTime } from "./run-time";
 import { PublishControl } from "./publish-control";
+import { runTitle } from "@/lib/log/titles";
 
 // One run, on the record: the media at full size, then everything that happened. Balance-after
 // is the owner's business, so a public viewer never sees it.
@@ -40,7 +41,7 @@ export function RunRecord({ initial, registered }: { initial: LogEntry; register
   const library = e.type === "library";
   const failed = e.status === "failed" || e.status === "canceled";
   const outputGone = !running && !failed && e.assets.length === 0;
-  const title = video ? (e.presetName ?? "Camera move") : e.prompt;
+  const title = runTitle(e);
   const took = e.finishedAt && !library ? (new Date(e.finishedAt).getTime() - new Date(e.createdAt).getTime()) / 1000 : null;
 
   async function deleteOutput() {
@@ -103,7 +104,7 @@ export function RunRecord({ initial, registered }: { initial: LogEntry; register
           {first && <Row label="Size">{`${first.width} by ${first.height}${first.durationMs ? `, ${Math.round(first.durationMs / 1000)} seconds` : ""}`}</Row>}
           {took !== null && took > 0.05 && <Row label="Took">{took < 10 ? `${took.toFixed(1)} seconds` : `${Math.round(took)} seconds`}</Row>}
           <Row label={library ? "Added" : "Made"}>
-            <LocalTime iso={e.createdAt} withDate />
+            <RunTime iso={e.createdAt} withDate />
           </Row>
           {!library && (
             <Row label="Cost">

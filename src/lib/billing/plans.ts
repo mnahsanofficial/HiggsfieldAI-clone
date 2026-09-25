@@ -4,7 +4,7 @@ import { db } from "@/db";
 import { creditLedger, IMAGE_CALLS_PER_DAY, models, plans, users } from "@/db/schema";
 import { grantCredits } from "@/lib/credits/ledger";
 import { priceJob } from "@/lib/credits/pricing";
-import { liveRendersFor } from "./limits";
+import { DAYS_IN_A_MONTH, liveRendersFor } from "./limits";
 import { type Promo, resolvePromo } from "./promo";
 
 export type PlanView = {
@@ -19,7 +19,11 @@ export type PlanView = {
   // The limits are the enforced values (lib/billing/limits.ts), not copy.
   imageCostTenths: number;
   videoCostTenths: number;
+  // Images the plan can actually reach in a month: its credits' worth, or its daily cap across a
+  // month, whichever is smaller. `imageLimit` says which one binds, so the card can say so.
   imageCount: number;
+  imageLimit: "credits" | "daily cap";
+  daysInMonth: number;
   imagesPerDay: number;
   liveRenders: number; // per account; a guest session gets LIVE_RENDER_CAP.guest
   liveRendersAsGuest: number;
@@ -39,22 +43,28 @@ export async function listPlans(): Promise<PlanView[]> {
   const imageCost = image ? priceJob(image.pricing, { resolution: image.capabilities.resolutions[0], batchSize: 1 }).costTenths : 20;
   const videoCost = video ? priceJob(video.pricing, { resolution: video.capabilities.resolutions[0], batchSize: 1, durationS: video.capabilities.durations?.[0] }).costTenths : 300;
 
-  return planRows.map((p) => ({
-    id: p.id,
-    name: p.name,
-    tagline: p.tagline,
-    rank: p.rank,
-    monthlyCreditsTenths: p.monthlyCreditsTenths,
-    priceMonthlyCents: p.priceMonthlyCents,
-    priceAnnualCents: p.priceAnnualCents,
-    imageCostTenths: imageCost,
-    videoCostTenths: videoCost,
-    imageCount: Math.floor(p.monthlyCreditsTenths / imageCost),
-    imagesPerDay: p.imagesPerDay,
-    liveRenders: liveRendersFor("registered"),
-    liveRendersAsGuest: liveRendersFor("guest"),
-    siteImagesPerDay: IMAGE_CALLS_PER_DAY,
-  }));
+  return planRows.map((p): PlanView => {
+    const byCredits = Math.floor(p.monthlyCreditsTenths / imageCost);
+    const byCap = p.imagesPerDay * DAYS_IN_A_MONTH;
+    return {
+      id: p.id,
+      name: p.name,
+      tagline: p.tagline,
+      rank: p.rank,
+      monthlyCreditsTenths: p.monthlyCreditsTenths,
+      priceMonthlyCents: p.priceMonthlyCents,
+      priceAnnualCents: p.priceAnnualCents,
+      imageCostTenths: imageCost,
+      videoCostTenths: videoCost,
+      imageCount: Math.min(byCredits, byCap),
+      imageLimit: byCap < byCredits ? "daily cap" : "credits",
+      daysInMonth: DAYS_IN_A_MONTH,
+      imagesPerDay: p.imagesPerDay,
+      liveRenders: liveRendersFor("registered"),
+      liveRendersAsGuest: liveRendersFor("guest"),
+      siteImagesPerDay: IMAGE_CALLS_PER_DAY,
+    };
+  });
 }
 
 export class PlanError extends Error {}

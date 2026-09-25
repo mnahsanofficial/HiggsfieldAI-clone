@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
+import { DocketFooter } from "@/components/docket/footer";
 import { DocketHeader } from "@/components/docket/header";
 import "./globals.css";
 
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <div id="main" className="flex flex-1 flex-col">
           {children}
         </div>
+        <DocketFooter />
       </body>
     </html>
   );

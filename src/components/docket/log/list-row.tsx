@@ -4,7 +4,8 @@ import { Amount } from "@/components/ui/amount";
 import { formatCredits } from "@/lib/credits/format";
 import type { CreditEvent, LogEntry } from "@/lib/log/entries";
 import { ROUTES } from "../routes";
-import { LocalTime } from "./local-time";
+import { RunTime } from "./run-time";
+import { runTitle, sourcePrompt } from "@/lib/log/titles";
 
 // The list view: the same record, one line per movement, with the balance after each. Runs
 // and credit events interleave by time, so the column of balances reads straight down.
@@ -26,10 +27,11 @@ export function RunRow({ entry: e }: { entry: LogEntry }) {
           {thumb && <SkeletonImg src={thumb.kind === "video" ? (thumb.posterUrl ?? "") : thumb.url} alt="" className="h-full w-full object-cover" />}
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[0.9375rem] font-medium">{e.vertical === "video" ? (e.presetName ?? "Camera move") : e.prompt}</span>
+          <span className="block truncate text-[0.9375rem] font-medium">{runTitle(e)}</span>
+          {sourcePrompt(e) && <span className="t-meta block truncate">{sourcePrompt(e)}</span>}
           <span className="t-meta flex flex-wrap gap-x-3">
             <span>{e.status === "canceled" ? "Stopped" : e.status === "failed" ? "Failed" : running ? "Running" : e.servedAs === "prerendered" ? "Pre-rendered example" : e.modelName}</span>
-            <LocalTime iso={e.createdAt} withDate />
+            <RunTime iso={e.createdAt} withDate />
           </span>
         </span>
       </Link>
@@ -51,7 +53,7 @@ export function CreditRow({ event: c }: { event: CreditEvent }) {
         <span className="block truncate text-[0.9375rem] font-medium">{REASON[c.reason] ?? "Credits"}</span>
         <span className="t-meta flex flex-wrap gap-x-3">
           {c.note && <span className="truncate">{c.note}</span>}
-          <LocalTime iso={c.createdAt} withDate />
+          <RunTime iso={c.createdAt} withDate />
         </span>
       </span>
       <span className="flex shrink-0 flex-col items-end text-[0.875rem]">
