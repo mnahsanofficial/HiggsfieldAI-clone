@@ -41,7 +41,8 @@ for (const [from, to] of OLD) {
 }
 
 // A library item's permalink, from the public log.
-const pub = await (await fetch(`${base}/api/log?scope=public&limit=6`)).json();
+// Enough rows to reach past the published runs into the library.
+const pub = await (await fetch(`${base}/api/log?scope=public&limit=20`)).json();
 check("public log has real rows", pub.entries.length >= 6 && pub.entries.every((e) => e.assets[0]?.url?.startsWith("/media/")), `${pub.entries.length}`);
 check("the allowance numbers are real, not test mode", pub.quota && pub.quota.testMode === false && pub.quota.siteCapacity === 57, JSON.stringify(pub.quota));
 
@@ -111,6 +112,13 @@ try {
       if (shotDir) await page.screenshot({ path: `${shotDir}/${path === "/" ? "home" : path.replace(/^\//, "").replace(/\//g, "-").slice(0, 40)}-${tag}.png` });
     }
     await page.goto(`${base}/make`, { waitUntil: "load" });
+    // With no images left today, /make opens on camera moves; the image form still states the count.
+    if (Math.min(pub.quota.siteLeft, pub.quota.yoursLeft) === 0) {
+      const mode = await page.$eval('main form input[name="mode"]:checked', (i) => i.value).catch(() => null);
+      check(`${tag} /make: out of images, it opens in camera-move mode`, mode === "move", `${mode}`);
+      await page.evaluate(() => [...document.querySelectorAll("main form label")].find((l) => l.textContent.trim() === "Image")?.click());
+      await page.waitForSelector("[data-quota]", { timeout: 5000 }).catch(() => {});
+    }
     const allowance = await page.$eval("[data-quota]", (e) => e.innerText).catch(() => "");
     check(`${tag} /make: the allowance line shows real numbers`, allowance.length > 0 && !allowance.startsWith("Test mode") && /(free images? left today|No free images left today)/.test(allowance), allowance.slice(0, 90));
     check(`${tag}: browsing created no session`, !(await page.cookies()).some((c) => /session/.test(c.name)));

@@ -1,6 +1,24 @@
 # Status
 
-**Features are frozen as of 2026-09-26.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
+**Features are frozen again as of 2026-09-26, after the reviewer-pass items below.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
+
+**Waiting on the owner, not merged:**
+- **#40:** README, "What I changed from Higgsfield, and why". Every "why" is a draft for the owner to rewrite in their own words. It touches only README.md.
+- **#44:** `docs/walkthrough.md`, the 45-second "What I changed from Higgsfield" segment. Its lines paraphrase #40's drafts; merge it after #40.
+
+**The second reviewer pass (owner, 2026-09-26), items 1–5:**
+1. The reference-to-decision story: #40, open for the owner's edit.
+2. The showcase is live, not pre-rendered (#41). `scripts/seed-live-moves.ts` published 3 live renders (Slow push-in, Pan right, Crash zoom), charged 30 each and rendered locally. Live runs lead the public log, How it works uses a live charged run, step 2 autoplays (with a play button under reduced motion), and the strip shows live runs and library images.
+3. The hero (#42): Start making sits under the subline, above the fold at 1440×789 and 390×844. The pair is capped at 58svh, with a "Drag to compare" hint until the handle moves.
+4. Polish (#43):
+   - one UTC date format (`lib/time.ts`), with no hydration mismatch
+   - out of images, `/make` opens in camera-move mode; disabled batch sizes say why
+   - plan outcomes reachable within their caps (Max 600, not 900), tested
+   - one live-move line above the cards
+   - "Camera move: <preset>" titles with the still's prompt
+   - a footer
+   - the fixture latency is 3 s
+5. The walkthrough segment: #44, open for the owner's edit.
 
 **Production:** https://higgsfield-ai-clone.vercel.app. It serves Docket at `/` from `main` (commit `0984d09` or later), and `/api/health` reports the deployed commit. Hobby plan: production deploys work; preview builds fail and don't matter.
 **Kill switch (no deploy):** `npx tsx --conditions react-server scripts/ops/render-mode.ts prerendered` (or `live`). Takes effect within ~10 s. It's `live` as of 2026-09-26.
@@ -12,7 +30,7 @@
 - **`/credits`** shows plans that state their limits beside their credits, and the labelled demo checkout (`AHSAN345` takes 100% off).
 - **The account menu**, top right: who you are, balance, your log, sign out. A guest's sign-out warns first.
 
-**Last verification (2026-09-26, production at `0984d09`, 390px and 1440px):** readiness **76/76**; `ui-home-e2e` **23/23** at each width (read-only; the live allowance was 0 of 57, so the out-of-images layout was checked); `ui-menu-e2e` **20/20** at each width (the guest part, including the sign-out warning). Locally, on a fixture server: make 24, log 12, home 24, credits 20 and menu 22, all passing at both widths; database checks 128.
+**Last verification (2026-09-26, production at `311605f`, 390px and 1440px):** readiness **78/78** (fresh browser, signed out; it now also checks that `/make` opens on camera moves when the day's images are gone); `ui-home-e2e` **33/33** at each width (read-only against the live allowance, 0 of 57 left); `ui-menu-e2e` **20/20** at each width (the guest part, including the sign-out warning). Locally, on a fixture server: make 28, credits 22, home 34, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
 
 **Owner to-dos, not blocking:**
 - The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) still carry the old name; the GitHub repo is now `docket-nahsan`. The README's **Live:** link is the only domain serving Docket. If you submit a different domain, change that line.
