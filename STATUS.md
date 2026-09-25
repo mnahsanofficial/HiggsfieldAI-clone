@@ -12,43 +12,49 @@ _Rewritten at the end of every branch. Resume from **Next action**._
 - **Paywall:** a 402 in either studio opens "Upgrade plan to buy credits" (recon 23) with the real shortfall. Basic/Pro/Max show credits translated into outcomes and annual prices with the monthly price struck through. Choosing a plan is a labelled demo (no payment): it switches the plan and grants that plan's credits, at most once per plan per user. Also at `/pricing`, and via Get more credits on `/credits`.
 - **Assets:** `/assets` shows everything the user made (examples badged), filter by type; lightbox Download / Animate / Reuse (prefills `/ai/image?prompt=`) / Delete (confirm; soft delete).
 
-## Plan (13h budget; build started 2026-09-14 ~20:35 UTC; one usage-limit pause during `feat/generation-jobs`)
+## Plan — redesign (Docket)
+
+The brief changed on 2026-09-25: keep the idea and the backend, rebuild the frontend as my own
+design, and make sure nothing reads as mock data. Direction 2 ("the run log") was chosen, named
+**Docket**, with the drag-to-compare handle taken from Direction 3 (user-dragged only).
 
 | # | Branch | State |
 |---|---|---|
-| 0 | `chore/deploy-pipeline`, `chore/db-schema`, `feat/auth` | done (PRs #4–#6) |
-| 1 | `feat/credit-ledger` | done (PR #7) |
-| 2 | `feat/generation-jobs` | done (PR #8) |
-| 3 | `chore/seed-library` | done (PR #9) |
-| 4 | `feat/create-image` (checkpoint) | done (PR #10); checkpoint passed on production |
-| 5 | `feat/video-render` | done (PR #11) |
-| 6 | `feat/create-video-presets` | done (PR #12) |
-| 7 | `feat/assets-library` | done (PR #13) |
-| 8 | `feat/explore` | done (PR #14) |
-| 9 | `feat/paywall` | done (PR #15, merged without deploy) |
-| 9a | `fix/render-cpu-budget` | done (PR #16, merged without deploy, pending builds) |
-| 9b | `feat/paywall-checkout` | done (PR #17, merged without deploy) |
-| 9c | `feat/skeletons` | done (PR #18) |
-| 9d | `fix/mobile-pass` | done (PR #19) |
-| 10 | `chore/readme` | done (PR #20) |
-| 11 | `chore/submission-check` | done |
+| 1 | `fix/backend-audit` | done |
+| 2 | `feat/design-system` | **next** |
+| 3 | create flow (image → camera move) | todo |
+| 4 | library and history (the log) | todo |
+| 5 | home | todo |
+| 6 | credits, paywall, checkout | todo |
+| 7 | auth screens | todo |
+| 8 | switch-over, old UI removed | todo |
+| 9 | README and readiness check | todo |
 
-## Waiting on the owner
-Nothing blocking. Production deploys from `main` work; preview builds still fail (cause not investigated; production is what's judged).
+Owner's changes to the chosen direction, to hold to while building:
+- media leads, the receipt supports: the image/video is the largest thing in an entry, the
+  model/cost/timing line sits quietly beneath it; media view is the default, list is the toggle
+- credits in/out never rely on colour alone: every amount carries a sign and a word
+  ("charged", "refunded", "free")
+- the public log is opt-in only: seed library + explicitly published runs; guests never
+- every entry has a permalink `/log/<id>`, openable signed-out when published
+- sentence case labels (no all-caps), and mono only where alignment genuinely needs it
+- an empty log is an invitation: one line, the make box, and the public log beneath
 
-## Next action (priority order from the owner)
-1. ~~CPU reduction + kill switch~~ done.
-2. ~~`feat/paywall-checkout`~~ done: demo card form (client-only validation, card fields never sent), promo `AHSAN345` (100% off, server-checked), grant is `demo_topup`, once-per-plan across `plan_grant` + `demo_topup` notes `<Plan> plan%`. e2e sets the guest balance with `scripts/dev/set-balance.ts` (adjustment row) instead of spending renders.
-3. ~~`feat/skeletons`~~ done: `SkeletonImg`/`SkeletonVideo` (components/media/skeleton-media.tsx) shimmer in the element's own aspect box until first paint; `loading.tsx` for /, /ai/image, /ai/video, /assets, /credits, /pricing, /login, /signup; lightbox box sized via container query units from asset dims. `ui-skeletons-e2e` holds /media and RSC responses to observe them.
-4. ~~`fix/mobile-pass`~~ done: `scripts/dev/mobile-audit.mjs` (16 surfaces at 390: overflow, tap targets ≥32px, controls ≥16px text) all clean; branded 404 + error page; safe-area padding for composer/sheets.
-5. ~~README~~ done (`README.md`).
-6. ~~Submission readiness check~~ done 2026-09-15 ~07:30 UTC against production `621d257`:
-   - api-e2e, ui-explore (390, 90/91 links, no dead links), ui-image (390), ui-video (390; live render + labelled free example), ui-assets (1440), ui-paywall (390, AHSAN345, no card data in any request), mobile-audit (16/16 surfaces)
-   - DB-level: verify-auth 19, verify-ledger 11, verify-jobs 24, verify-plans 16, verify-video 19, all pass (run verify-auth with `GUEST_LIMIT_PER_HOUR=30`: `.env.local` sets 1000 and the limit test loops up to it)
-   - no secrets in tracked files (incl. `.agent-logs`); `/api/render-test` 404 in production; render mode `live`; squash merge disabled; no stray branches
-7. Improvement: skipped. Recon §6 ("My reactions", where the one improvement comes from) is still the owner's to fill, and inventing it would contradict the recon.
+Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 
-**Owner to-dos before submitting:** fill recon §6; record the walkthrough.
+## Backend audit (PR #22)
+
+| What could read as mock | Fix |
+|---|---|
+| Image sample fallback on quota | Removed. The job fails, refunds, and says the daily free limit is used up and when it resets (00:00 UTC) |
+| Seed/library identity encoded in file names | `assets.collection`, `assets.topic`, `assets.aspect` columns + backfill; all lookups by column |
+| Promo code in a source map | `promo_codes` table, seeded; `AHSAN345` unchanged for users |
+| No publish model | `generation_jobs.published_at`, opt-in, registered only |
+| Nothing to read a run from | `src/lib/log/entries.ts` + `GET /api/log`, `GET /api/log/[id]`, `POST /api/log/[id]/publish` |
+| Typed-in credit numbers in copy | Derived from `STARTER_CREDITS_TENTHS` and DB pricing |
+| Hardcoded preset categories | Derived from `presets.category` |
+| Explore's editorial sections | Not migrated: the new IA has no editorial sections. Home reads `/api/log`; the file goes at switch-over |
+| `assetSource='sample'` now means only "pre-rendered example" | Rename deferred to switch-over: renaming the enum while the old UI is live would label a pre-rendered example as a live render |
 
 ## Facts worth not re-deriving
 - **Render policy:** `src/lib/render/policy.ts`.

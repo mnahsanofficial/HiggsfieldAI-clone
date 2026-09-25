@@ -3,6 +3,7 @@ import { GuestButton } from "@/components/auth/guest-button";
 import { CreditGlyph } from "@/components/credits/credit-glyph";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { formatCredits } from "@/lib/credits/format";
+import { STARTER_CREDITS_TENTHS } from "@/lib/credits/starter";
 import { AutoVideo } from "./auto-video";
 import { type ExploreTile, MediaSection } from "./section";
 import { SkeletonImg } from "@/components/media/skeleton-media";
@@ -26,7 +27,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
     { title: "Animate any image", text: "Push in, pan, arc or pull focus.", href: "/ai/video?preset=rack-focus-in", media: byId("rack-focus-in") },
     { title: "Your assets", text: "Every image and render in one library.", href: "/assets", media: sections.fantasy[1] },
   ];
-  const credits = user ? Math.floor(user.creditBalanceTenths / imageCost) : Math.floor(1000 / imageCost);
+  const credits = user ? Math.floor(user.creditBalanceTenths / imageCost) : Math.floor(STARTER_CREDITS_TENTHS / imageCost);
 
   return (
     <main className="flex flex-col gap-10 pb-0 sm:gap-14">
@@ -51,7 +52,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
             )
           ) : (
             <>
-              <span>100 free credits. No email, no card.</span>
+              <span>{formatCredits(STARTER_CREDITS_TENTHS)} free credits. No email, no card.</span>
               <Link href="/ai/image" className="inline-flex min-h-8 items-center rounded-md bg-black px-2.5 text-xs font-semibold text-accent">
                 Start creating
               </Link>
@@ -109,7 +110,7 @@ export function ExplorePage({ user, imageCost, videoCost, presets, sections }: E
                   <span className="text-accent">in one click</span>
                 </p>
                 <p className="text-sm text-white/70">
-                  100 credits = {credits} images or {Math.floor(1000 / videoCost)} videos. Sign up later to keep your work.
+                  {formatCredits(STARTER_CREDITS_TENTHS)} credits = {credits} images or {Math.floor(STARTER_CREDITS_TENTHS / videoCost)} videos. Sign up later to keep your work.
                 </p>
                 <div className="mt-auto w-full max-w-xs">
                   <GuestButton next="/ai/image" />

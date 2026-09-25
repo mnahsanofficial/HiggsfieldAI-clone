@@ -5,7 +5,7 @@ import { creditLedger, users } from "@/db/schema";
 
 export type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
-export const STARTER_CREDITS_TENTHS = 1000; // 100 credits for every new account, guest or registered
+export { STARTER_CREDITS_TENTHS } from "./starter";
 
 export class InsufficientCreditsError extends Error {
   constructor(

@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
+import { formatCredits } from "@/lib/credits/format";
+import { STARTER_CREDITS_TENTHS } from "@/lib/credits/starter";
 import { type AuthFormState, signInAction, signUpAction } from "@/app/auth/actions";
 import { GuestButton } from "./guest-button";
 import { SkeletonImg } from "@/components/media/skeleton-media";
@@ -51,7 +53,7 @@ export function AuthCard({ hero, mode, next, isGuest }: Props) {
         {!isGuest && (
           <div className="flex flex-col gap-2">
             <GuestButton next={next} />
-            <p className="text-center text-xs text-white/45">No email. 100 free credits. Sign up later to keep your work.</p>
+            <p className="text-center text-xs text-white/45">{`No email. ${formatCredits(STARTER_CREDITS_TENTHS)} free credits. Sign up later to keep your work.`}</p>
           </div>
         )}
 

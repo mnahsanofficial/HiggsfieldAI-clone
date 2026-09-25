@@ -158,6 +158,9 @@ async function main() {
           height: cropped.height,
           modelId: "flux_1_schnell",
           prompt: item.prompt,
+          collection: "seed",
+          topic: item.section,
+          aspect: item.aspect,
           isPublic: true,
         });
         done++;

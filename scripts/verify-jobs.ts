@@ -70,13 +70,7 @@ async function main() {
     const cached = await db.select({ key: S.providerCache.key }).from(S.providerCache).where(eq(S.providerCache.assetUrl, asset?.url ?? ""));
     cacheKeys.push(...cached.map((c) => c.key));
 
-    // A public generated asset so the sample fallback has something to serve.
-    const [pub] = await db
-      .insert(S.assets)
-      .values({ kind: "image", source: "generated", url: asset!.url, width: 1024, height: 576, modelId: "flux_1_schnell", prompt: "sample prompt", isPublic: true, userId: u })
-      .returning({ id: S.assets.id });
-
-    // 3. Quota exhausted: failed, refunded, labelled sample attached, never charged.
+    // 3. Quota exhausted: failed, refunded, no output at all, and the message says when it resets.
     const beforeQuota = await balance(u);
     const c = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} quota`, aspect: "1:1", resolution: "1K", batchSize: 1 });
     await jobs.runImageJob(c.jobId, { provider: failing("quota_exhausted") });
@@ -84,18 +78,16 @@ async function main() {
     const cAssets = await db.select().from(S.assets).where(eq(S.assets.jobId, c.jobId));
     check("quota: job failed with quota_exhausted", jc.status === "failed" && jc.errorCode === "quota_exhausted");
     check("quota: refunded (net zero)", (await balance(u)) === beforeQuota);
-    // Samples are drawn at random from all public model outputs (the seed library included), so
-    // check the attached one against its source asset rather than expecting our test asset.
-    const [src] = cAssets[0] ? await db.select({ prompt: S.assets.prompt }).from(S.assets).where(and(eq(S.assets.url, cAssets[0].url), eq(S.assets.isPublic, true))).limit(1) : [];
-    check("quota: sample attached, labelled sample, with the sample's own prompt", cAssets.length === 1 && cAssets[0].source === "sample" && !!src && cAssets[0].prompt === src.prompt && cAssets[0].prompt !== `${prompt} quota`, cAssets[0]?.prompt ?? "no sample");
+    check("quota: no stand-in image is attached", cAssets.length === 0);
+    check("quota: message says the daily limit is used up and when it resets", /free daily image limit/i.test(jc.errorMessage ?? "") && /00:00 UTC/.test(jc.errorMessage ?? "") && /refunded/i.test(jc.errorMessage ?? ""), jc.errorMessage ?? "");
     const [{ qe }] = await db.select({ qe: sql<number>`count(*)::int` }).from(S.systemEvents).where(and(eq(S.systemEvents.kind, "provider_quota_exhausted"), sql`detail->>'jobId' = ${c.jobId}`));
     check("quota: logged to system_events", qe === 1);
 
-    // 4. Moderation flag: failed, refunded, no sample.
+    // 4. Moderation flag: failed, refunded, no output.
     const d = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} flagged`, aspect: "1:1", resolution: "1K", batchSize: 1 });
     await jobs.runImageJob(d.jobId, { provider: failing("content_flagged") });
     const dAssets = await db.select().from(S.assets).where(eq(S.assets.jobId, d.jobId));
-    check("flagged: failed, refunded, no sample", (await job(d.jobId)).errorCode === "content_flagged" && dAssets.length === 0 && (await balance(u)) === beforeQuota);
+    check("flagged: failed, refunded, no output", (await job(d.jobId)).errorCode === "content_flagged" && dAssets.length === 0 && (await balance(u)) === beforeQuota);
 
     // 5. Cancel a queued job, then the worker arriving late does nothing.
     const e = await jobs.submitImageJob(u, { modelId: "flux_1_schnell", prompt: `${prompt} cancel-queued`, aspect: "1:1", resolution: "1K", batchSize: 1 });
@@ -189,7 +181,6 @@ async function main() {
     await db.delete(S.systemEvents).where(and(eq(S.systemEvents.kind, "blob_cap_reached"), sql`detail->>'period' = ${period}`));
 
     check("ledger sum == balance for the test user", await invariant(u));
-    await db.delete(S.assets).where(eq(S.assets.id, pub.id));
   } finally {
     if (users.length) {
       const jobIds = (await db.select({ id: S.generationJobs.id }).from(S.generationJobs).where(inArray(S.generationJobs.userId, users))).map((j) => j.id);

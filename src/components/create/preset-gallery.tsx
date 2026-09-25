@@ -4,26 +4,23 @@ import { useEffect, useMemo, useState } from "react";
 import type { StudioPreset } from "./types";
 import { SkeletonVideo } from "@/components/media/skeleton-media";
 
-const CATEGORIES: { id: string; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "push", label: "Push & pull" },
-  { id: "pan", label: "Pan & tilt" },
-  { id: "arc", label: "Arc" },
-  { id: "handheld", label: "Handheld" },
-  { id: "focus", label: "Focus" },
-];
 
 // Preset gallery (recon 17 shows "Change" and "View all presets" but never opened them, so
 // the layout is an assumption): category filter plus a grid of looping previews rendered by
 // the same camera renderer users get.
 export function PresetGrid({ presets, selectedId, onSelect }: { presets: StudioPreset[]; selectedId?: string; onSelect: (p: StudioPreset) => void }) {
   const [category, setCategory] = useState("all");
+  // The filters are whatever categories the presets in the database actually have.
+  const categories = useMemo(
+    () => [{ id: "all", label: "All" }, ...[...new Set(presets.map((p) => p.category))].map((c) => ({ id: c, label: c.charAt(0).toUpperCase() + c.slice(1) }))],
+    [presets],
+  );
   const shown = useMemo(() => (category === "all" ? presets : presets.filter((p) => p.category === category)), [presets, category]);
 
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]" role="tablist" aria-label="Preset categories">
-        {CATEGORIES.map((c) => (
+        {categories.map((c) => (
           <button
             key={c.id}
             type="button"

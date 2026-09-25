@@ -4,6 +4,10 @@ import type { ModelCapabilities, ModelPricing, PresetMotion } from "./schema";
 // "free" plan is ours, since the capture shows no free tier. Models are only ones
 // this app really runs: nothing here is renamed to look like a model it isn't.
 
+// Demo promo codes seeded into promo_codes. AHSAN345 takes the whole price off, which is
+// honest about what the demo checkout does: nothing is ever charged, with or without a code.
+export const PROMO_CODES = [{ code: "AHSAN345", percentOff: 100, active: true, note: "Reviewer code: full discount on the demo checkout" }];
+
 export const PLANS = [
   {
     id: "free",

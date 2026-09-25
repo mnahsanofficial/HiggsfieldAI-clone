@@ -63,6 +63,8 @@ async function main() {
         modelId: "camera_motion",
         presetId: preset.id,
         prompt: `${preset.name} preview: ${seed.prompt ?? ""}`,
+        collection: "preset_preview",
+        aspect: "16:9",
         isPublic: true,
       })
       .returning({ id: assets.id });

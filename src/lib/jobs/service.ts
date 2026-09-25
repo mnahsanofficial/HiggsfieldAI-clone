@@ -17,7 +17,23 @@ import { type ImageProvider, ProviderError, type ProviderErrorCode } from "./pro
 
 const PROVIDERS: Record<string, ImageProvider> = { cloudflare: cloudflareProvider };
 const MAX_ACTIVE_JOBS_PER_USER = 4;
-const SAMPLE_ON: ProviderErrorCode[] = ["quota_exhausted", "rate_limited", "not_configured"];
+// The image provider's free allowance is a daily one that resets at 00:00 UTC. When it's
+// gone the job fails and is refunded: this app never substitutes another image for one the
+// model didn't generate.
+const QUOTA_CODES: ProviderErrorCode[] = ["quota_exhausted", "rate_limited", "not_configured"];
+
+function untilUtcMidnight(now = new Date()): string {
+  const mins = Math.max(1, Math.ceil((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1) - now.getTime()) / 60000));
+  const h = Math.floor(mins / 60);
+  return h ? `${h}h ${mins % 60}m` : `${mins}m`;
+}
+
+export function providerFailureMessage(code: ProviderErrorCode, fallback: string): string {
+  if (code === "quota_exhausted") return `The free daily image limit for this deployment has been used up. It resets at 00:00 UTC, in ${untilUtcMidnight()}. Your credits were refunded.`;
+  if (code === "rate_limited") return "The image provider is handling too many requests right now. Try again in a minute. Your credits were refunded.";
+  if (code === "not_configured") return "Image generation isn't configured on this deployment. Your credits were refunded.";
+  return fallback;
+}
 
 export class JobInputError extends Error {
   constructor(
@@ -151,20 +167,21 @@ export async function runImageJob(jobId: string, opts: RunOptions = {}): Promise
           height: o.height,
           modelId: job.modelId,
           prompt: job.prompt,
+          aspect: job.params.aspect,
         })),
       );
     });
   } catch (err) {
     if (err instanceof ProviderError) {
-      if (err.code === "quota_exhausted" || err.code === "rate_limited") {
+      if (QUOTA_CODES.includes(err.code)) {
         await db.insert(systemEvents).values({ kind: `provider_${err.code}`, detail: { jobId, detail: err.detail ?? null } });
       }
-      await failJob(jobId, err.code, err.message, SAMPLE_ON.includes(err.code));
+      await failJob(jobId, err.code, providerFailureMessage(err.code, err.message));
     } else if (err instanceof StorageCapReachedError) {
-      await failJob(jobId, "storage_cap", "New uploads are paused for this month. Your credits were refunded.", true);
+      await failJob(jobId, "storage_cap", "New uploads are paused for this month. Your credits were refunded.");
     } else {
       console.error(`[jobs] ${jobId} crashed`, err);
-      await failJob(jobId, "internal_error", "Something went wrong on our side. Your credits were refunded.", false);
+      await failJob(jobId, "internal_error", "Something went wrong on our side. Your credits were refunded.");
     }
   }
 }
@@ -174,9 +191,9 @@ export async function stillProcessing(jobId: string): Promise<boolean> {
   return row?.status === "processing";
 }
 
-// Marks a job failed and refunds it, exactly once. With `withSample`, attaches existing
-// public model outputs as clearly labelled samples: no upload, no charge.
-export async function failJob(jobId: string, code: string, message: string, withSample: boolean): Promise<boolean> {
+// Marks a job failed and refunds it, exactly once. A failed job has no output: this app
+// never attaches a stand-in image in place of a generation it didn't produce.
+export async function failJob(jobId: string, code: string, message: string): Promise<boolean> {
   return db.transaction(async (tx) => {
     const [failed] = await tx
       .update(generationJobs)
@@ -185,29 +202,6 @@ export async function failJob(jobId: string, code: string, message: string, with
       .returning();
     if (!failed) return false;
     await refundJob(tx, jobId, `Refund: ${code}`);
-    if (withSample) {
-      const samples = await tx
-        .select({ url: assets.url, width: assets.width, height: assets.height, modelId: assets.modelId, prompt: assets.prompt })
-        .from(assets)
-        .where(and(eq(assets.isPublic, true), eq(assets.kind, "image"), eq(assets.source, "generated")))
-        .orderBy(sql`random()`)
-        .limit(failed.params.batchSize);
-      if (samples.length) {
-        await tx.insert(assets).values(
-          samples.map((s) => ({
-            userId: failed.userId,
-            jobId,
-            kind: "image" as const,
-            source: "sample" as const,
-            url: s.url,
-            width: s.width,
-            height: s.height,
-            modelId: s.modelId,
-            prompt: s.prompt, // the sample's own prompt, never the user's
-          })),
-        );
-      }
-    }
     return true;
   });
 }
@@ -265,7 +259,7 @@ export async function sweepStaleJobs(force = false): Promise<number> {
     .limit(50);
   let n = 0;
   for (const { id } of stale) {
-    if (await failJob(id, "worker_lost", "This generation stopped unexpectedly. Your credits were refunded.", false)) n++;
+    if (await failJob(id, "worker_lost", "This generation stopped unexpectedly. Your credits were refunded.")) n++;
   }
   if (n) await db.insert(systemEvents).values({ kind: "jobs_swept", detail: { count: n } });
   return n;
