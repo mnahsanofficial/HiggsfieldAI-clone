@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
+import { LoopingVideo } from "@/components/media/looping-video";
+import { SkeletonImg } from "@/components/media/skeleton-media";
 import { Amount } from "@/components/ui/amount";
 import { ButtonLink } from "@/components/ui/button";
 import { Compare } from "@/components/ui/compare";
@@ -152,7 +153,7 @@ function HowItWorks({ example: e, image, moveCount }: { example: LogEntry | null
         </div>
         {take && e && (
           <figure>
-            <SkeletonVideo src={take.url} poster={take.posterUrl ?? undefined} controls muted loop playsInline preload="none" aria-label={`${e.presetName ?? "Camera move"}, rendered over that still`} className="w-full rounded-xl bg-field object-cover" style={box} />
+            <LoopingVideo src={take.url} poster={take.posterUrl} label={`${e.presetName ?? "Camera move"}, rendered live over that still`} className="w-full rounded-xl bg-field object-cover" style={box} />
           </figure>
         )}
       </li>
@@ -205,7 +206,7 @@ function StripItem({ entry: e }: { entry: LogEntry }) {
       <Link href={ROUTES.entry(e.id)} className="group flex flex-col gap-2 rounded-xl">
         <span className="block aspect-square overflow-hidden rounded-xl bg-field">{src && <SkeletonImg src={src} alt="" className="h-full w-full object-cover" />}</span>
         <span className="line-clamp-2 text-[0.9375rem] font-medium group-hover:underline">{title}</span>
-        <span className="t-meta">{e.type === "library" ? `Library image, ${e.modelName}` : e.servedAs === "prerendered" ? "Pre-rendered example" : e.modelName}</span>
+        <span className="t-meta">{e.type === "library" ? `Library image, ${e.modelName}` : e.servedAs === "prerendered" ? "Pre-rendered example" : e.servedAs === "live" ? "Rendered live with ffmpeg" : e.modelName}</span>
       </Link>
     </li>
   );

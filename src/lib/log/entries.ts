@@ -204,6 +204,10 @@ export async function listMyLog(userId: string, opts: { limit?: number; before?:
 
 // The public log is opt-in: published runs from registered accounts, plus the seed library
 // so a first visit is never an empty page. Nothing a guest makes appears here.
+// Published runs lead with the ones rendered live, then pre-rendered examples, newest first
+// within each: the public log shows the real renderer before the stand-ins.
+const liveFirst = sql`(${generationJobs.providerState}->>'served' = 'live') DESC NULLS LAST`;
+
 export async function listPublicLog(viewerId: string | null, opts: { limit?: number; before?: string } = {}): Promise<LogEntry[]> {
   const limit = Math.min(opts.limit ?? 20, 50);
   const where = [
@@ -219,15 +223,15 @@ export async function listPublicLog(viewerId: string | null, opts: { limit?: num
     .innerJoin(users, eq(users.id, generationJobs.userId))
     .leftJoin(presets, eq(presets.id, generationJobs.presetId))
     .where(and(...where))
-    .orderBy(desc(generationJobs.publishedAt))
+    .orderBy(liveFirst, desc(generationJobs.publishedAt))
     .limit(limit);
   const published = await hydrate(rows, viewerId);
   if (published.length >= limit) return published;
   return [...published, ...(await listLibraryEntries(limit - published.length))];
 }
 
-// The public log as a page you can read to the end: published runs (newest first), then the
-// library in a stable order, paged by offset across both. `more` is true while rows remain.
+// The public log as a page you can read to the end: published runs (live renders first, newest
+// first within each), then the library in a stable order, paged by offset across both. `more` is true while rows remain.
 export async function listPublicLogPage(viewerId: string | null, opts: { limit?: number; offset?: number } = {}): Promise<{ entries: LogEntry[]; more: boolean }> {
   const limit = Math.min(Math.max(opts.limit ?? 12, 1), 50);
   const offset = Math.max(opts.offset ?? 0, 0);
@@ -249,7 +253,7 @@ export async function listPublicLogPage(viewerId: string | null, opts: { limit?:
             .innerJoin(users, eq(users.id, generationJobs.userId))
             .leftJoin(presets, eq(presets.id, generationJobs.presetId))
             .where(where)
-            .orderBy(desc(generationJobs.publishedAt), desc(generationJobs.id))
+            .orderBy(liveFirst, desc(generationJobs.publishedAt), desc(generationJobs.id))
             .limit(want)
             .offset(offset),
           viewerId,
