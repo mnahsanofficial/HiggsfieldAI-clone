@@ -28,7 +28,7 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | 5 | `feat/home` (Docket home at `/next`) | done (PR #27) |
 | 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | done (PR #28) |
 | 7 | done: switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
-| 8 | **next**: README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
+| 8 | `chore/readme-docket`: README rewrite + readiness check on production | done |
 
 Owner's changes to the chosen direction, to hold to while building:
 - media leads, the receipt supports: the image/video is the largest thing in an entry, the
@@ -41,6 +41,14 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Where things stand (2026-09-25)
+- **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **72/72** (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
+- README rewritten for Docket (PR #30); the three directions as offered are in `docs/design-directions.md`.
+- Owner to-dos, not blocking:
+  - The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) and the GitHub repo still carry the old name (dashboard actions). Old links keep working through the redirects.
+  - The walkthrough beat sheet from 2026-09-15 describes the clone; it needs redoing for Docket.
+- The daily image allowance resets at 00:00 UTC; until then `/make` truthfully says none are left and points to camera moves.
 
 ## Switch-over (PR #29)
 - Docket is the app: routes at the app root (`/`, `/make`, `/log`, `/log/<id>`, `/credits`, `/sign-in`, `/sign-up`, `/style`). Home lives in `app/(home)` and the log list in `app/log/(list)` so their loading boundaries don't stream other routes before `notFound()` can set 404.
