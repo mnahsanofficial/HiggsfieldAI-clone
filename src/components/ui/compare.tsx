@@ -15,6 +15,7 @@ export function Compare({
   height,
   stillLabel = "Still",
   takeLabel = "Camera move",
+  hint,
 }: {
   still: { url: string; alt: string };
   take: { url: string; posterUrl?: string | null; label: string };
@@ -22,8 +23,15 @@ export function Compare({
   height: number;
   stillLabel?: string;
   takeLabel?: string;
+  // A short prompt beside the handle ("Drag to compare"), gone once the handle has been moved.
+  hint?: string;
 }) {
-  const [pos, setPos] = useState(50);
+  const [pos, setPosRaw] = useState(50);
+  const [moved, setMoved] = useState(false);
+  const setPos = useCallback((next: number | ((p: number) => number)) => {
+    setMoved(true);
+    setPosRaw(next);
+  }, []);
   const box = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const reduced = useReducedMotion();
@@ -32,7 +40,7 @@ export function Compare({
     const r = box.current?.getBoundingClientRect();
     if (!r) return;
     setPos(Math.round(Math.min(100, Math.max(0, ((clientX - r.left) / r.width) * 100))));
-  }, []);
+  }, [setPos]);
 
   return (
     <div
@@ -67,6 +75,11 @@ export function Compare({
       <span className="pointer-events-none absolute right-2 top-2 rounded-md bg-paper/90 px-2 py-0.5 text-[0.75rem] font-semibold text-ink">{takeLabel}</span>
 
       <div className="pointer-events-none absolute inset-y-0 w-0.5 -translate-x-1/2 bg-paper" style={{ left: `${pos}%` }} />
+      {hint && !moved && (
+        <span aria-hidden className="pointer-events-none absolute top-1/2 mt-8 -translate-x-1/2 whitespace-nowrap rounded-md bg-ink/85 px-2 py-1 text-[0.75rem] font-semibold text-paper" style={{ left: `${pos}%` }} data-testid="compare-hint">
+          {hint}
+        </span>
+      )}
       <button
         type="button"
         role="slider"

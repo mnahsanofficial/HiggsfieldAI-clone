@@ -36,7 +36,8 @@ try {
   if (readOnly) results.push(`NOTE  read-only run against a live allowance (${q.siteLeft} of ${q.siteCapacity} left today)`);
 
   const page = await browser.newPage();
-  await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
+  // The reviewer's viewports: a phone, and a laptop browser window with its chrome.
+  await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 789, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
   await page.goto(`${base}/`, { waitUntil: "networkidle0", timeout: 60000 });
 
   // 1. What it is, and who it's for.
@@ -46,10 +47,18 @@ try {
   const moveCount = Number(forLine.match(/pick one of (\d+) camera moves/)?.[1]);
   check("one plain sentence under it: who it's for and what they get", /^For anyone who wants/.test(forLine) && moveCount > 0 && /\d+-second \d+p clip/.test(forLine), forLine);
 
+  // The one way in is on the first screen, under the subline, before the pair.
+  const fold = await page.evaluate(() => { const a = document.querySelector('[data-testid="home-actions"] a'); const r = a.getBoundingClientRect(); const pair = document.querySelector('[data-testid="home-pair"]'); return { text: a.textContent.trim(), bottom: Math.round(r.bottom), h: innerHeight, beforePair: !pair || !!(a.compareDocumentPosition(pair) & Node.DOCUMENT_POSITION_FOLLOWING) }; });
+  check("the primary action is above the fold, under the subline and before the pair", fold.bottom <= fold.h && fold.beforePair, JSON.stringify(fold));
+
   // 2. The real pair, with the handle.
   check("the real still-and-move pair is the hero", !!(await page.$('[data-testid="home-pair"] [role="slider"]')) && (await inner(page, '[data-testid="home-pair"]')).includes("rendered with ffmpeg over a library still"));
+  const pairBox = await page.$eval('[data-testid="home-pair"]', (f) => Math.round(f.getBoundingClientRect().height));
+  check("the pair's height is capped", pairBox <= (mobile ? 844 : 789) * 0.62 + 40, `${pairBox}px`);
+  check("a 'Drag to compare' hint sits by the handle at first", (await inner(page, '[data-testid="compare-hint"]')) === "Drag to compare");
   await page.focus('[data-testid="home-pair"] [role="slider"]');
   await page.keyboard.press("ArrowRight");
+  check("the hint is gone once the handle has moved", !(await page.$('[data-testid="compare-hint"]')));
   check("the handle works from the keyboard", (await page.$eval('[data-testid="home-pair"] [role="slider"]', (s) => s.getAttribute("aria-valuenow"))) === "55");
 
   // 3. How it works: three steps, each a real artifact from one published run.
