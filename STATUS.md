@@ -45,7 +45,8 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 ## Reviewer-pass fixes (owner tested the live site cold)
 1. `fix/honest-limits` (PR #31): `plans.images_per_day` (free 5, basic 10, pro 15, max 20; CHECK ≤ 57) is the one source for the cap, the cards and the starter (`lib/billing/limits.ts`); network cap = highest plan cap; live renders unchanged per plan. Cards/starter state the limits beside the credits; the "N camera moves" outcome is gone. `scripts/verify-limits.ts` ties copy to enforcement. DB connect timeout 10 s → 30 s (laptop connects measured 5–20 s).
 2. `feat/home-headline-pair` (PR #32): one-line h1 in the first HTML (home has no loading boundary); a real still-and-take pair with the handle (`lib/docket/home-pair.ts`, a featured live-renderable move's preview over its still); out of images → the camera-move action leads, quota note second. `scripts/seed-public-moves.ts` published 4 pre-rendered moves from a library account that can't sign in (`library@docket.invalid`).
-3. then: share previews (og) and word-boundary titles; still-picker names (check); preset names in sentence case; readiness on production.
+3. `feat/share-previews`: `/` and every public `/log/<id>` have og:title, og:description and a generated 1200×630 image (`lib/og/card.tsx`; the run's image, or a take's poster frame). Private runs: no og, noindex, image route 404. Titles cut at a word with an ellipsis (`lib/text.ts`). Readiness checks all of it.
+4. then: still-picker names (check); preset names in sentence case; readiness on production.
 
 ## Where things stand (2026-09-25)
 - **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **72/72** (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
