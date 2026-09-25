@@ -21,7 +21,7 @@ const text = (page, sel = "main") => page.$eval(sel, (m) => m.innerText).catch((
 const clickExact = (page, sel, t) => page.evaluate((s, x) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); if (!el) throw new Error(`no ${s} "${x}"`); el.click(); }, sel, t);
 const clickStarts = (page, sel, t) => page.evaluate((s, x) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim().startsWith(x)); if (!el) throw new Error(`no ${s} "${x}"`); el.click(); }, sel, t);
 const setValue = (page, sel, v) => page.$eval(sel, (el, val) => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, val); el.dispatchEvent(new Event("input", { bubbles: true })); }, v);
-const headerBalance = (page) => page.evaluate(() => [...document.querySelectorAll("header a")].map((a) => a.textContent.trim()).find((t) => /^[\d.,]+ credits/.test(t))?.replace(/ credits.*/, "") ?? "none");
+const headerBalance = (page) => page.evaluate(() => [...document.querySelectorAll("header a, header button")].map((a) => a.textContent.trim()).find((t) => /^[\d.,]+ credits/.test(t))?.replace(/ credits.*/, "") ?? "none");
 
 let guestId = null;
 const sent = [];
@@ -76,7 +76,7 @@ try {
   await page.waitForFunction(() => document.querySelector("dialog[open]")?.innerText.includes("Pro is your plan now"), { timeout: 20000 });
   const done = await text(page, "dialog[open]");
   check("success: Pro is your plan, +600 added, 'no payment taken'", done.includes("+600") && done.includes("added") && done.includes("no payment taken"));
-  await page.waitForFunction(() => [...document.querySelectorAll("header a")].some((a) => a.textContent.startsWith("700 credits")), { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => [...document.querySelectorAll("header a, header button")].some((a) => a.textContent.startsWith("700 credits")), { timeout: 15000 }).catch(() => {});
   check("the header balance updates to 700", (await headerBalance(page)) === "700", await headerBalance(page));
   await shot(page, "5-done");
   await clickExact(page, "dialog[open] button", "Done");
