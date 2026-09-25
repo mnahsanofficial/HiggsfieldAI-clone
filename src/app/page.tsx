@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, like } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { type ExploreData, ExplorePage } from "@/components/explore/explore-page";
 import type { ExploreTile } from "@/components/explore/section";
@@ -13,9 +13,9 @@ export default async function Home() {
   const [user, seeds, presetRows, modelRows] = await Promise.all([
     getCurrentUser(),
     db
-      .select({ id: assets.id, url: assets.url, width: assets.width, height: assets.height, prompt: assets.prompt })
+      .select({ id: assets.id, url: assets.url, width: assets.width, height: assets.height, prompt: assets.prompt, topic: assets.topic })
       .from(assets)
-      .where(and(isNull(assets.userId), eq(assets.isPublic, true), like(assets.url, "/media/seed/%")))
+      .where(and(eq(assets.collection, "seed"), eq(assets.isPublic, true)))
       .orderBy(asc(assets.url)),
     db
       .select({ id: presets.id, name: presets.name, description: presets.description, url: preview.url, posterUrl: preview.posterUrl, width: preview.width, height: preview.height })
@@ -25,10 +25,9 @@ export default async function Home() {
     db.select({ id: models.id, pricing: models.pricing, capabilities: models.capabilities }).from(models).where(eq(models.active, true)),
   ]);
 
-  const sectionOf = (url: string) => url.replace(/^\/media\/seed\//, "").split("-")[0];
   const sections = { cinema: [], portrait: [], street: [], product: [], fantasy: [], nature: [], poster: [] } as ExploreData["sections"];
   for (const s of seeds) {
-    const key = sectionOf(s.url) as keyof ExploreData["sections"];
+    const key = s.topic as keyof ExploreData["sections"];
     if (!(key in sections)) continue;
     sections[key].push({ id: s.id, kind: "image", url: s.url, width: s.width, height: s.height, prompt: s.prompt, href: `/ai/image?prompt=${encodeURIComponent(s.prompt ?? "")}` });
   }

@@ -47,6 +47,8 @@ async function main() {
         modelId: "camera_motion",
         presetId: preset.id,
         prompt: `${preset.name} (pre-rendered library, ${aspect})`,
+        collection: "render_library",
+        aspect,
         isPublic: false,
       });
       made++;

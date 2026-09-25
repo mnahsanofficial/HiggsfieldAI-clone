@@ -59,7 +59,7 @@ export async function switchPlanDemo(
 ): Promise<{ changed: boolean; grantedTenths: number; balanceTenths: number; promo: Promo | null }> {
   const [plan] = await db.select().from(plans).where(eq(plans.id, planId));
   if (!plan || plan.id === "free") throw new PlanError("Choose a paid plan.");
-  const promo = opts.promoCode?.trim() ? resolvePromo(opts.promoCode) : null;
+  const promo = opts.promoCode?.trim() ? await resolvePromo(opts.promoCode) : null;
   if (opts.promoCode?.trim() && !promo) throw new PlanError("That promo code isn't valid.");
   const note = `${plan.name} plan: demo checkout${promo ? ` with ${promo.code} (${promo.percentOff}% off)` : ""}, no payment taken`;
 

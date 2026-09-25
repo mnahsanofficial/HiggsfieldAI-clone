@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull, like, or, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assets, generationJobs, type JobParams, models, plans, presets, users } from "@/db/schema";
 import { chargeForJob, type Tx } from "@/lib/credits/ledger";
@@ -113,6 +113,7 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
         modelId: model.id,
         presetId: preset.id,
         prompt: `${preset.name}: pre-rendered example (${FALLBACK_COPY[decision.reason]})`,
+        aspect: input.aspect,
       });
       return { jobId: job.id, costTenths: 0, live: false as const, reason: decision.reason };
     }
@@ -141,17 +142,21 @@ export async function submitVideoJob(userId: string, input: VideoSubmitInput): P
 // Pre-rendered clips live under renders/library-<preset>-<aspect>-... (scripts/seed-render-library.ts).
 // Prefer the chosen preset and aspect, then the same preset in any aspect, then General.
 async function findPrerenderedClip(tx: Tx, presetId: string, aspect: string) {
-  const slug = aspect.replace(":", "x");
-  const candidates = [`/media/renders/library-${presetId}-${slug}-%`, `/media/renders/library-${presetId}-%`, `/media/renders/library-general-${slug}-%`];
-  for (const pattern of candidates) {
-    const [clip] = await tx
+  // The library is identified by its columns, never by how its files happen to be named:
+  // collection 'render_library', the preset it renders, and the aspect it was rendered at.
+  const pick = (where: SQL | undefined) =>
+    tx
       .select({ id: assets.id, url: assets.url, posterUrl: assets.posterUrl, width: assets.width, height: assets.height, durationMs: assets.durationMs })
       .from(assets)
-      .where(and(isNull(assets.userId), eq(assets.kind, "video"), like(assets.url, pattern), sql`${assets.url} NOT LIKE '%-poster%'`))
+      .where(and(eq(assets.collection, "render_library"), isNull(assets.deletedAt), where))
       .limit(1);
-    if (clip) return clip;
-  }
-  return null;
+
+  const [exact] = await pick(and(eq(assets.presetId, presetId), eq(assets.aspect, aspect)));
+  if (exact) return exact;
+  const [samePreset] = await pick(eq(assets.presetId, presetId));
+  if (samePreset) return samePreset;
+  const [sameAspect] = await pick(eq(assets.aspect, aspect));
+  return sameAspect ?? null;
 }
 
 // Runs a queued video job. `invokedAtMs` is when the function invocation began (the POST that
@@ -225,16 +230,17 @@ export async function runVideoJob(jobId: string, invokedAtMs = Date.now()): Prom
         modelId: job.modelId,
         presetId: preset.id,
         prompt: job.prompt,
+        aspect: job.params.aspect,
       });
     });
   } catch (err) {
     if (err instanceof RenderBudgetError) {
-      await failJob(jobId, "render_budget", "This render wouldn't finish within the server's time limit. Try 720p or 5s. Your credits were refunded.", false);
+      await failJob(jobId, "render_budget", "This render wouldn't finish within the server's time limit. Try 720p or 5s. Your credits were refunded.");
     } else if (err instanceof StorageCapReachedError) {
-      await failJob(jobId, "storage_cap", "New uploads are paused for this month. Your credits were refunded.", false);
+      await failJob(jobId, "storage_cap", "New uploads are paused for this month. Your credits were refunded.");
     } else {
       console.error(`[video] ${jobId} failed`, err);
-      await failJob(jobId, "render_error", "The render failed. Your credits were refunded.", false);
+      await failJob(jobId, "render_error", "The render failed. Your credits were refunded.");
     }
   }
 }

@@ -33,6 +33,8 @@ export const ledgerReason = pgEnum("ledger_reason", [
   "adjustment",
 ]);
 export const assetKind = pgEnum("asset_kind", ["image", "video"]);
+// Curated collections this app seeds itself. Everything a user makes has no collection.
+export const assetCollection = pgEnum("asset_collection", ["seed", "render_library", "preset_preview"]);
 // How an asset came to exist. The UI labels every asset from this, so the
 // difference between model output, a rendered transform and a stand-in is never hidden.
 export const assetSource = pgEnum("asset_source", [
@@ -54,6 +56,20 @@ export const plans = pgTable("plans", {
   // Credits translated into outcomes, e.g. ["= 300 image generations", "~ 27 videos"].
   outcomes: jsonb("outcomes").$type<string[]>().notNull().default([]),
 });
+
+// Demo promo codes. In the database rather than in code, so what a code does is data the
+// API reads, and adding one needs no deploy. No code here takes money: see plans.
+export const promoCodes = pgTable(
+  "promo_codes",
+  {
+    code: text("code").primaryKey(), // stored upper-case; lookups upper-case the input
+    percentOff: smallint("percent_off").notNull(),
+    active: boolean("active").notNull().default(true),
+    note: text("note"),
+    createdAt: createdAt(),
+  },
+  (t) => [check("promo_percent_range", sql`${t.percentOff} BETWEEN 1 AND 100`)],
+);
 
 export const users = pgTable(
   "users",
@@ -142,11 +158,23 @@ export const assets = pgTable(
     modelId: text("model_id").references(() => models.id),
     presetId: text("preset_id").references((): AnyPgColumn => presets.id),
     prompt: text("prompt"),
+    // What this asset IS, as data rather than as a file-naming convention. 'seed' is the
+    // public starter library (topic = its section), 'render_library' is the pre-rendered
+    // camera-move clips, 'preset_preview' the gallery previews; user content is null.
+    collection: assetCollection("collection"),
+    topic: text("topic"),
+    // Stored, not guessed from width/height, so lookups and the log read the same value
+    // the job was submitted with.
+    aspect: text("aspect"),
     isPublic: boolean("is_public").notNull().default(false),
     createdAt: createdAt(),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),
   },
-  (t) => [index("assets_user_created_idx").on(t.userId, t.createdAt.desc())],
+  (t) => [
+    index("assets_user_created_idx").on(t.userId, t.createdAt.desc()),
+    index("assets_collection_idx").on(t.collection, t.topic),
+    index("assets_library_lookup_idx").on(t.collection, t.presetId, t.aspect),
+  ],
 );
 
 export const generationJobs = pgTable(
@@ -174,6 +202,9 @@ export const generationJobs = pgTable(
     errorMessage: text("error_message"),
     retryOfJobId: uuid("retry_of_job_id").references((): AnyPgColumn => generationJobs.id, { onDelete: "set null" }),
     cancelRequestedAt: timestamp("cancel_requested_at", { withTimezone: true }),
+    // Opt-in publishing for the public log. Null means private, which is the default for
+    // every run; only registered accounts can set it (guests never appear publicly).
+    publishedAt: timestamp("published_at", { withTimezone: true }),
     // Updated while a worker is running; the sweep fails and refunds jobs whose heartbeat went stale.
     heartbeatAt: timestamp("heartbeat_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -185,6 +216,7 @@ export const generationJobs = pgTable(
     check("jobs_progress_range", sql`${t.progress} BETWEEN 0 AND 100`),
     index("jobs_user_created_idx").on(t.userId, t.createdAt.desc()),
     index("jobs_active_idx").on(t.status, t.heartbeatAt).where(sql`${t.status} IN ('queued', 'processing')`),
+    index("jobs_published_idx").on(t.publishedAt.desc()).where(sql`${t.publishedAt} IS NOT NULL`),
   ],
 );
 
