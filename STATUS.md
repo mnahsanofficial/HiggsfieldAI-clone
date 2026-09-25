@@ -1,10 +1,23 @@
 # Status
 
-**Features are frozen again as of 2026-09-26, after the reviewer-pass items below.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
+**Features are frozen as of 2026-09-26, after the owner's last pass.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
 
-**Waiting on the owner, not merged:**
-- **#40:** README, "What I changed from Higgsfield, and why". Every "why" is a draft for the owner to rewrite in their own words. It touches only README.md.
-- **#44:** `docs/walkthrough.md`, the 45-second "What I changed from Higgsfield" segment. Its lines paraphrase #40's drafts; merge it after #40.
+**Waiting on the owner, not merged (as of 2026-09-26):**
+- **#40:** README, "What I changed from Higgsfield, and why".
+  - The owner reported filling in recon §6 and editing every why. Neither edit had reached GitHub or this checkout when I looked: the branch holds only my two commits, and `recon/notes.md` §6 is still "TO FILL IN".
+  - Once the edits are pushed, the steps are: remove the "(draft)" markers and the "Every why below is a draft" note (no other wording changes), then add "With a real budget, next" under the table.
+  - Those bullets are also still needed: the request contained its placeholder, not the bullets.
+  - Then merge.
+- **#47** (stacked on #40): "In 60 seconds" at the very top of the README. Line 5 ("How it's checked") is my addition, and easy to drop. It merges after #40.
+- **#44:** the walkthrough segment. Rebase on `main` after #40 and #47, then merge.
+
+**The owner's last pass, done (2026-09-26):**
+- **#46:**
+  - The hero's camera move plays on load at 390 and 1440, measured.
+  - Under reduced motion it holds on its poster with its own "Play the move" button. The old native controls sat under the still's layer. This is fixed in the shared comparison, so log entries get it too.
+  - From `lg` up, the headline and the way in sit beside the pair, and the whole pair is on the first screen at 1440×789.
+  - The home strip no longer shows a still twice.
+- **Production at `67a2799`:** readiness **78/78**; `ui-home-e2e` **38/38** read-only at each width.
 
 **The second reviewer pass (owner, 2026-09-26), items 1–5:**
 1. The reference-to-decision story: #40, open for the owner's edit.
@@ -30,7 +43,7 @@
 - **`/credits`** shows plans that state their limits beside their credits, and the labelled demo checkout (`AHSAN345` takes 100% off).
 - **The account menu**, top right: who you are, balance, your log, sign out. A guest's sign-out warns first.
 
-**Last verification (2026-09-26, production at `311605f`, 390px and 1440px):** readiness **78/78** (fresh browser, signed out; it now also checks that `/make` opens on camera moves when the day's images are gone); `ui-home-e2e` **33/33** at each width (read-only against the live allowance, 0 of 57 left); `ui-menu-e2e` **20/20** at each width (the guest part, including the sign-out warning). Locally, on a fixture server: make 28, credits 22, home 34, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
+**Last verification (2026-09-26, production at `67a2799`, 390px and 1440px):** readiness **78/78** (fresh browser, signed out); `ui-home-e2e` **38/38** at each width (read-only against the live allowance, 0 of 57 left; it measures real playback, reduced motion and the side-by-side hero); `ui-menu-e2e` **20/20** at each width at `311605f` (the guest part). Locally, on a fixture server: make 28, credits 22, home 39, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
 
 **Owner to-dos, not blocking:**
 - The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) still carry the old name; the GitHub repo is now `docket-nahsan`. The README's **Live:** link is the only domain serving Docket. If you submit a different domain, change that line.

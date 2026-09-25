@@ -392,7 +392,7 @@ These run against the real database and storage, clean up after themselves, and 
 - **Readiness:** `node scripts/dev/readiness.mjs <baseUrl> [dir]` arrives cold, like a reviewer: a fresh browser, no cookies, signed out, at 390px and 1440px.
   - It checks every page, a real 404, every old URL's redirect, no trace of the old identity, tap targets and 16px controls, the real allowance, and that browsing creates no session.
   - It checks the share previews of home, a published move and the longest-prompt library image (og:title, og:description, a 1200×630 og:image that loads, twitter:card), and that a long title is cut at a word.
-  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, after the second reviewer pass) passed 78/78, alongside the home e2e (read-only, 33/33 at each width) and the menu e2e's guest part (20/20 at each width).
+  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, after the second reviewer pass) passed 78/78, alongside the home e2e (read-only, 38/38 at each width, measuring real playback) and the menu e2e's guest part (20/20 at each width).
 
 ## How it was built
 
