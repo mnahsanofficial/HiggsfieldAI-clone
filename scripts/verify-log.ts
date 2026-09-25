@@ -128,6 +128,19 @@ async function main() {
     check("published camera moves in the public log are labelled pre-rendered examples", runs.filter((e) => e.vertical === "video").every((e) => e.servedAs === "prerendered" && e.renderedFrom !== null && e.balanceAfterTenths === null));
     check("every public entry carries a real model name and real media", pub.every((e) => e.modelName.length > 0 && e.assets[0]?.url.startsWith("/media/")));
 
+    // 5b. The public log page reads to the end in a stable order: no repeats, runs first.
+    const seenIds: string[] = [];
+    const types: string[] = [];
+    for (let offset = 0, more = true, guard = 0; more && guard < 100; guard++) {
+      const page = await log.listPublicLogPage(null, { limit: 7, offset });
+      seenIds.push(...page.entries.map((e) => e.id));
+      types.push(...page.entries.map((e) => e.type));
+      offset += page.entries.length;
+      more = page.more;
+    }
+    const firstLibrary = types.indexOf("library");
+    check("the public log page pages to the end with no repeats, published runs before the library", seenIds.length > 0 && new Set(seenIds).size === seenIds.length && types.slice(firstLibrary).every((t) => t === "library"), `${seenIds.length} entries, ${firstLibrary} runs`);
+
     // 6. Paging by timestamp.
     const page1 = await log.listMyLog(owner, { limit: 2 });
     const page2 = await log.listMyLog(owner, { limit: 2, before: page1[page1.length - 1].createdAt });

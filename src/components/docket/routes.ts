@@ -3,6 +3,7 @@ export const ROUTES = {
   home: "/",
   make: "/make",
   log: "/log",
+  publicLog: "/log?scope=public",
   entry: (id: string) => `/log/${id}`,
   credits: "/credits",
   signIn: "/sign-in",

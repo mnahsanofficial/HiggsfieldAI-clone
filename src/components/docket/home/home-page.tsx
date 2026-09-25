@@ -1,199 +1,212 @@
-"use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
+import { Amount } from "@/components/ui/amount";
+import { ButtonLink } from "@/components/ui/button";
 import { Compare } from "@/components/ui/compare";
-import { CostMeter } from "@/components/ui/cost-meter";
-import { Field, TextArea } from "@/components/ui/field";
-import { Segmented } from "@/components/ui/segmented";
 import { formatCredits } from "@/lib/credits/format";
-import type { HomePair } from "@/lib/docket/home-pair";
-import type { ImageQuota } from "@/lib/jobs/image-quota";
+import type { HomeData } from "@/lib/docket/home-data";
 import type { LogEntry } from "@/lib/log/entries";
-import { Entry } from "../log/entry";
-import { RunRow } from "../log/list-row";
+import { truncateWords } from "@/lib/text";
 import { ImageAllowance } from "../make/composer";
 import { ROUTES } from "../routes";
 
-// Home: one line about what Docket is, the make box, then the log: yours if you have one, and
-// the public log beneath (media first, list on request). Every number on it comes from the API.
-export function HomePage({
-  signedIn,
-  balanceTenths,
-  imageCostTenths,
-  quota,
-  mine,
-  publicEntries,
-  moveCount,
-  liveRenders,
-  pair,
-}: {
-  signedIn: boolean;
-  balanceTenths: number;
-  imageCostTenths: number;
-  quota: ImageQuota;
-  mine: LogEntry[];
-  publicEntries: LogEntry[];
-  moveCount: number;
-  liveRenders: number;
-  pair: HomePair | null;
-}) {
-  const router = useRouter();
-  const [prompt, setPrompt] = useState("");
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<"media" | "list">("media");
-  const allowance = Math.min(quota.siteLeft, quota.yoursLeft);
-  const short = imageCostTenths > balanceTenths;
-
-  async function make() {
-    setError(null);
-    setPending(true);
-    try {
-      if (!signedIn) {
-        const g = await fetch("/api/auth/guest", { method: "POST" });
-        if (!g.ok) throw new Error((await g.json().catch(() => ({}))).message ?? "Couldn't start a session. Try again in a minute.");
-      }
-      const res = await fetch("/api/jobs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vertical: "image", modelId: "flux_1_schnell", prompt: prompt.trim(), aspect: "1:1", resolution: "1K", batchSize: 1 }),
-      });
-      const out = await res.json().catch(() => ({}));
-      if (res.status !== 201) throw new Error(out.message ?? "That didn't go through. Nothing was charged. Try again.");
-      // The run is on the record now; /make is where it lands and where the loop continues.
-      router.push(ROUTES.make);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong. Nothing was charged.");
-      setPending(false);
-    }
-  }
-
-  const shown = mine.length ? mine : publicEntries;
-  const starter = !signedIn && (
-    <p className="t-meta" data-testid="starter">
-      No account needed: you start with {formatCredits(balanceTenths)} free credits, up to {quota.perVisitor} images a day and {liveRenders} live camera {liveRenders === 1 ? "move" : "moves"}.
-    </p>
-  );
+// Home explains; /make makes; /log remembers. Top to bottom: what Docket is and who it's for,
+// the real still-and-move pair, how it works (each step a real artifact from one published run),
+// what's real, what's free, one way in, and a short strip of the public log.
+// Every number here comes from HomeData, which reads it from the database or the enforced values.
+export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRendersWithAccount }: { data: HomeData; signedIn: boolean; registered: boolean; balanceTenths: number | null; liveRendersWithAccount: number }) {
+  const allowance = Math.min(d.quota.siteLeft, d.quota.yoursLeft);
+  const outOfImages = allowance === 0;
+  const moves = (n: number) => `${n} live camera ${n === 1 ? "move" : "moves"}`;
 
   return (
-    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-12 px-4 py-8 sm:py-12">
-      <section aria-labelledby="home-heading" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
-        <div className="flex min-w-0 flex-col gap-5">
-          <div className="flex flex-col gap-3">
-            <h1 id="home-heading" className="t-display">
-              Docket makes an image, then moves the camera over it.
-            </h1>
-            <p className="t-body max-w-2xl text-muted">
-              Every run stays on the record: the model that ran, what it cost, and any refund. Images come from FLUX.1 [schnell] when you ask; the {moveCount} camera moves are rendered over them with ffmpeg, frame by frame.
-            </p>
-          </div>
-          {pair && (
-            <figure className="flex flex-col gap-2" data-testid="home-pair">
-              <Compare
-                still={{ url: pair.still.url, alt: pair.still.prompt ?? "The still" }}
-                take={{ url: pair.take.url, posterUrl: pair.take.posterUrl, label: `${pair.presetName}, rendered over the still` }}
-                width={pair.take.width}
-                height={pair.take.height}
-                stillLabel="Library still"
-              />
-              <figcaption className="t-meta">
-                {pair.presetName}, rendered with ffmpeg over a library still: this move&apos;s preview, straight from the renderer. Drag the handle to compare.
-              </figcaption>
-            </figure>
-          )}
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-14 px-4 py-8 sm:gap-20 sm:py-12">
+      <section aria-labelledby="home-heading" className="flex flex-col gap-6">
+        <div className="flex max-w-3xl flex-col gap-3">
+          <h1 id="home-heading" className="t-display">
+            Docket makes an image, then moves the camera over it.
+          </h1>
+          <p className="t-body text-muted" data-testid="home-for">
+            For anyone who wants a moving shot from a single picture: describe an image, pick one of {d.moveCount} camera moves, and get a {d.move.seconds}-second {d.move.resolution} clip, with every credit accounted for.
+          </p>
         </div>
+        {d.pair && (
+          <figure className="flex max-w-[960px] flex-col gap-2" data-testid="home-pair">
+            <Compare
+              still={{ url: d.pair.still.url, alt: d.pair.still.prompt ?? "The still" }}
+              take={{ url: d.pair.take.url, posterUrl: d.pair.take.posterUrl, label: `${d.pair.presetName}, rendered over the still` }}
+              width={d.pair.take.width}
+              height={d.pair.take.height}
+              stillLabel="Library still"
+            />
+            <figcaption className="t-meta">{d.pair.presetName}, rendered with ffmpeg over a library still. Drag the handle to compare.</figcaption>
+          </figure>
+        )}
+      </section>
 
-        {allowance === 0 ? (
+      <section aria-labelledby="how-heading" className="flex flex-col gap-6" data-testid="how-it-works">
+        <h2 id="how-heading" className="t-title">
+          How it works
+        </h2>
+        <HowItWorks example={d.example} image={d.image} moveCount={d.moveCount} />
+      </section>
+
+      <section aria-labelledby="real-heading" className="flex max-w-3xl flex-col gap-4" data-testid="whats-real">
+        <h2 id="real-heading" className="t-title">
+          What&apos;s real
+        </h2>
+        <ul className="t-body flex list-disc flex-col gap-2 pl-5">
+          <li>
+            Images are generated by {d.image.name} on {d.image.provider}.
+          </li>
+          <li>Camera moves are rendered with ffmpeg over the still, frame by frame. They are not AI video.</li>
+          <li>
+            Every credit in and out is recorded, with the balance after it.{" "}
+            <Link href={d.example ? ROUTES.entry(d.example.id) : ROUTES.publicLog} className="inline-block py-1 font-medium underline underline-offset-2 hover:text-muted" data-testid="proof-link">
+              See a real run&apos;s record
+            </Link>
+          </li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="free-heading" className="flex max-w-3xl flex-col gap-5" data-testid="free-to-start">
+        <div className="flex flex-col gap-2">
+          <h2 id="free-heading" className="t-title">
+            Free to start
+          </h2>
+          <p className="t-body" data-testid="starter">
+            {signedIn && balanceTenths !== null ? `You have ${formatCredits(balanceTenths)} credits.` : `No account needed: you start with ${formatCredits(d.starterTenths)} free credits.`} An image costs {formatCredits(d.image.costTenths)} and a live camera move {formatCredits(d.move.costTenths)}.
+          </p>
+          <p className="t-body" data-testid="daily-limits">
+            You can make up to {d.quota.perVisitor} images a day, from {d.quota.siteCapacity} a day shared by everyone on this deployment, and {moves(d.liveRenders)}
+            {!registered && liveRendersWithAccount !== d.liveRenders ? ` (${liveRendersWithAccount} with an account)` : ""}. After that, camera moves come as pre-rendered examples, free.
+          </p>
+        </div>
+        {outOfImages ? (
           // Out of today's images: lead with what still works, and say why second.
-          <section aria-label="Make something" className="flex flex-col gap-4 self-start rounded-2xl bg-field p-4 sm:p-5">
+          <div className="flex max-w-md flex-col gap-3" data-testid="home-actions">
             <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
               Move the camera over a library image
             </ButtonLink>
-            <ImageAllowance quota={quota} />
-            {starter}
-          </section>
+            <ImageAllowance quota={d.quota} />
+            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+              See the public log
+            </ButtonLink>
+          </div>
         ) : (
-          <form
-            className="flex flex-col gap-4 self-start rounded-2xl bg-field p-4 sm:p-5"
-            aria-label="Make an image"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (prompt.trim() && !short) void make();
-            }}
-          >
-            <Field id="home-prompt" label="Describe the image">
-              <TextArea id="home-prompt" rows={3} maxLength={2000} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="A lighthouse on black rocks at dusk, storm clouds, long exposure" />
-            </Field>
-            <ImageAllowance quota={quota} />
-            <CostMeter costTenths={imageCostTenths} balanceTenths={balanceTenths} />
-            {short ? (
-              <ButtonLink href={ROUTES.credits} size="lg">
-                Get more credits
-              </ButtonLink>
-            ) : (
-              <Button type="submit" size="lg" pending={pending} disabled={!prompt.trim()}>
-                Make the image
-              </Button>
-            )}
-            {error && (
-              <p role="alert" className="t-body text-charged">
-                {error}
-              </p>
-            )}
-            {starter}
-          </form>
+          <div className="flex flex-col gap-3 sm:flex-row" data-testid="home-actions">
+            <ButtonLink href={ROUTES.make} size="lg">
+              Start making
+            </ButtonLink>
+            <ButtonLink href={ROUTES.publicLog} variant="secondary" size="lg">
+              See the public log
+            </ButtonLink>
+          </div>
         )}
       </section>
 
-      <section aria-labelledby="log-heading" className="flex flex-col gap-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 id="log-heading" className="t-title">
-              {mine.length ? "Your latest runs" : "The public log"}
+      {d.strip.length > 0 && (
+        <section aria-labelledby="strip-heading" className="flex flex-col gap-4" data-testid="public-strip">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="strip-heading" className="t-title">
+              From the public log
             </h2>
-            <p className="t-meta mt-1">
-              {mine.length ? "Private unless you publish them." : "Library images, and runs their makers chose to publish. Nothing is public unless someone publishes it."}
-            </p>
+            <Link href={ROUTES.publicLog} className="t-meta inline-block py-2 underline underline-offset-2 hover:text-ink">
+              See all of it
+            </Link>
           </div>
-          <div className="flex flex-wrap items-end gap-4">
-            <Segmented
-              name="home-view"
-              label="View"
-              hideLabel
-              value={view}
-              onChange={setView}
-              options={[
-                { value: "media", label: "Media" },
-                { value: "list", label: "List" },
-              ]}
-            />
-            {mine.length > 0 && (
-              <Link href={ROUTES.log} className="t-meta inline-block py-2 underline underline-offset-2 hover:text-ink">
-                Open your log
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {view === "media" ? (
-          <ol className="grid gap-x-8 gap-y-12 md:grid-cols-2">
-            {shown.map((e) => (
-              <li key={e.id}>
-                <Entry entry={e} onMoveCamera={(a) => router.push(`${ROUTES.make}?still=${a.id}`)} />
-              </li>
+          <ul className="grid grid-cols-2 gap-x-4 gap-y-6 md:grid-cols-4">
+            {d.strip.map((e) => (
+              <StripItem key={e.id} entry={e} />
             ))}
-          </ol>
-        ) : (
-          <ol className="flex max-w-[760px] flex-col gap-2">
-            {shown.map((e) => (
-              <RunRow key={e.id} entry={e} />
-            ))}
-          </ol>
-        )}
-      </section>
+          </ul>
+        </section>
+      )}
     </main>
+  );
+}
+
+function HowItWorks({ example: e, image, moveCount }: { example: LogEntry | null; image: HomeData["image"]; moveCount: number }) {
+  const still = e?.renderedFrom ?? null;
+  const take = e?.assets.find((a) => a.kind === "video") ?? null;
+  // Tall 9:16 frames stay narrow instead of taking over the page.
+  const box = take ? { aspectRatio: `${take.width} / ${take.height}`, width: `min(100%, ${Math.round((360 * take.width) / take.height)}px)` } : { aspectRatio: "1 / 1" };
+  return (
+    <ol className="grid gap-8 md:grid-cols-3 md:gap-6">
+      <li className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h3 className="t-label text-[0.9375rem]">1. Make an image</h3>
+          <p className="t-body text-muted">Describe it, and {image.name} makes it.</p>
+        </div>
+        {still && (
+          <figure className="flex flex-col gap-2">
+            <SkeletonImg src={still.url} alt={still.prompt ?? "A still from the library"} className="w-full rounded-xl object-cover" style={box} />
+            {still.prompt && <figcaption className="t-meta">&ldquo;{truncateWords(still.prompt, 90)}&rdquo;</figcaption>}
+          </figure>
+        )}
+      </li>
+      <li className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h3 className="t-label text-[0.9375rem]">2. Choose a camera move</h3>
+          <p className="t-body text-muted">Pick one of the {moveCount}, and ffmpeg renders it over your image.</p>
+        </div>
+        {take && e && (
+          <figure>
+            <SkeletonVideo src={take.url} poster={take.posterUrl ?? undefined} controls muted loop playsInline preload="none" aria-label={`${e.presetName ?? "Camera move"}, rendered over that still`} className="w-full rounded-xl bg-field object-cover" style={box} />
+          </figure>
+        )}
+      </li>
+      <li className="flex flex-col gap-3">
+        <div className="flex flex-col gap-1">
+          <h3 className="t-label text-[0.9375rem]">3. Every run stays on the record</h3>
+          <p className="t-body text-muted">What you asked for, the model that ran, what it cost, and any refund.</p>
+        </div>
+        {e && <Receipt entry={e} />}
+      </li>
+    </ol>
+  );
+}
+
+// The run's receipt line, as its record shows it.
+function Receipt({ entry: e }: { entry: LogEntry }) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl bg-field p-4" data-testid="home-receipt">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-[0.9375rem]">
+        <dt className="text-muted">Model</dt>
+        <dd className="font-medium">{e.modelName}</dd>
+        {e.presetName && (
+          <>
+            <dt className="text-muted">Move</dt>
+            <dd className="font-medium">{e.presetName}</dd>
+          </>
+        )}
+        <dt className="text-muted">Cost</dt>
+        <dd>
+          {e.settlement === "free" ? <Amount tenths={0} as="free" /> : <Amount tenths={e.costTenths} as="charged" />}
+          {e.servedAs === "prerendered" && <span className="t-meta"> (a pre-rendered example)</span>}
+        </dd>
+        <dt className="text-muted">Refund</dt>
+        <dd>{e.refundedTenths > 0 ? <Amount tenths={e.refundedTenths} as="refunded" /> : e.settlement === "free" ? "None: nothing was charged" : "None"}</dd>
+      </dl>
+      <Link href={ROUTES.entry(e.id)} className="t-meta inline-block self-start py-1 underline underline-offset-2 hover:text-ink">
+        Open this run&apos;s record
+      </Link>
+    </div>
+  );
+}
+
+function StripItem({ entry: e }: { entry: LogEntry }) {
+  const take = e.assets.find((a) => a.kind === "video");
+  const img = e.assets.find((a) => a.kind === "image");
+  const src = take ? take.posterUrl : img?.url;
+  const title = e.vertical === "video" ? (e.presetName ?? "Camera move") : e.prompt;
+  return (
+    <li>
+      <Link href={ROUTES.entry(e.id)} className="group flex flex-col gap-2 rounded-xl">
+        <span className="block aspect-square overflow-hidden rounded-xl bg-field">{src && <SkeletonImg src={src} alt="" className="h-full w-full object-cover" />}</span>
+        <span className="line-clamp-2 text-[0.9375rem] font-medium group-hover:underline">{title}</span>
+        <span className="t-meta">{e.type === "library" ? `Library image, ${e.modelName}` : e.servedAs === "prerendered" ? "Pre-rendered example" : e.modelName}</span>
+      </Link>
+    </li>
   );
 }

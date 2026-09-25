@@ -99,7 +99,8 @@ try {
   const feed = await sp.evaluate(async () => (await (await fetch("/api/log?scope=public&limit=50")).json()).entries.map((e) => e.id));
   check("it appears in the public log", feed.includes(r.id));
   const og = await sp.$eval('meta[property="og:image"]', (m) => m.content).catch(() => "");
-  check("share preview points at the image", og.includes("/media/"), og);
+  const ogRes = og ? await fetch(og.replace(/^https?:\/\/[^/]+/, base)) : null;
+  check("share preview is the run's generated card, and it loads", og.includes(`/log/${r.id}/opengraph-image`) && ogRes?.status === 200 && ogRes.headers.get("content-type") === "image/png", og);
   await shot(sp, "6-record-public");
 
   await op.goto(`${base}/log/${r.id}`, { waitUntil: "networkidle0" });

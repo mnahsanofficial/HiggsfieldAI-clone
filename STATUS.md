@@ -49,6 +49,11 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 4. `fix/preset-names-sentence-case`: the 13 Title Case preset names and the video model ("Camera motion") are in sentence case, reseeded; `verify-log` fails on a Title Case preset. Still picker checked, left as-is: each button carries `aria-label` = the prompt, the image inside is `alt=""`, so the prompt is read once. Two stale `ui-make-e2e` checks fixed on the way: the library check assumed library entries lead the public log (published runs do since #32), and the pending check slept past the 1.5 s fixture on mobile (now polls).
 5. `chore/readiness-after-fixes`: readiness on production at 390px and 1440px, **76/76**; screenshots refreshed. The reviewer-pass list is done.
 
+## Last changes before the feature freeze (owner, 2026-09-26)
+1. `feat/home-explains`: home explains (headline + who it's for; real pair; how it works as three real artifacts from one published run; what's real, linked to a real record; free to start from the enforced values; one primary action; a four-entry public strip). The public log page is `/log?scope=public` (`listPublicLogPage`, stable order, offset paging; API `?offset=`). Home e2e rewritten, 24/24 at 390 and 1440; `verify-log` 20/20.
+2. next: `feat/account-menu` (balance button, email or Guest, balance → /credits, your log, sign out; a guest's sign-out confirms first).
+3. then: readiness on production, README screenshots and What to click first, the Live link, STATUS frozen, walkthrough beat sheet.
+
 ## Where things stand (2026-09-25)
 - **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **76/76** on 2026-09-26 after the reviewer-pass fixes (#31–#34), including share previews and word-boundary titles (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
 - README rewritten for Docket (PR #30); the three directions as offered are in `docs/design-directions.md`.

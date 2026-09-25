@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { clientIp, hashIp, imageQuota } from "@/lib/jobs/image-quota";
 import { sweepStaleJobs } from "@/lib/jobs/service";
-import { listCreditEvents, listMyLog, listPublicLog } from "@/lib/log/entries";
+import { listCreditEvents, listMyLog, listPublicLog, listPublicLogPage } from "@/lib/log/entries";
 
 // The log, read from Postgres. scope=mine is the caller's own runs; scope=public is
 // opt-in published runs plus the seed library, so the home page always has real rows.
@@ -24,6 +24,12 @@ export async function GET(request: Request) {
     const full = entries.length === limit;
     const credits = url.searchParams.get("include") === "credits" ? await listCreditEvents(user.id, { before, after: full ? entries[entries.length - 1].createdAt : undefined }) : [];
     return NextResponse.json({ entries, credits, balanceTenths: user.creditBalanceTenths, signedIn: true, more: full, quota });
+  }
+  // ?offset pages the public log in a stable order (the /log?scope=public page); without it,
+  // the newest published runs topped up with a random few from the library.
+  if (url.searchParams.has("offset")) {
+    const page = await listPublicLogPage(user?.id ?? null, { limit, offset: Number(url.searchParams.get("offset")) || 0 });
+    return NextResponse.json({ ...page, balanceTenths: user?.creditBalanceTenths ?? null, signedIn: !!user, quota });
   }
   return NextResponse.json({ entries: await listPublicLog(user?.id ?? null, { limit, before }), balanceTenths: user?.creditBalanceTenths ?? null, signedIn: !!user, quota });
 }

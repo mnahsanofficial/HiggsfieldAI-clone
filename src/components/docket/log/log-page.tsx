@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -138,7 +139,13 @@ export function LogPage({
             <h2 id="public-heading" className="t-title">
               From the public log
             </h2>
-            <p className="t-meta mt-1">Images from the library. Try moving the camera over one.</p>
+            <p className="t-meta mt-1">
+              Images from the library. Try moving the camera over one, or{" "}
+              <Link href={ROUTES.publicLog} className="inline-block py-2 underline underline-offset-2 hover:text-ink">
+                see the whole public log
+              </Link>
+              .
+            </p>
           </div>
           {publicEntries.map((e) => (
             <Entry key={e.id} entry={e} onMoveCamera={(a) => router.push(`${ROUTES.make}?still=${a.id}`)} />

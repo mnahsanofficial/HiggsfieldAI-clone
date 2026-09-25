@@ -226,16 +226,53 @@ export async function listPublicLog(viewerId: string | null, opts: { limit?: num
   return [...published, ...(await listLibraryEntries(limit - published.length))];
 }
 
+// The public log as a page you can read to the end: published runs (newest first), then the
+// library in a stable order, paged by offset across both. `more` is true while rows remain.
+export async function listPublicLogPage(viewerId: string | null, opts: { limit?: number; offset?: number } = {}): Promise<{ entries: LogEntry[]; more: boolean }> {
+  const limit = Math.min(Math.max(opts.limit ?? 12, 1), 50);
+  const offset = Math.max(opts.offset ?? 0, 0);
+  const where = and(
+    isNotNull(generationJobs.publishedAt),
+    eq(users.kind, "registered"),
+    sql`EXISTS (SELECT 1 FROM ${assets} WHERE ${assets.jobId} = ${generationJobs.id} AND ${assets.deletedAt} IS NULL)`,
+  );
+  const [{ n: publishedCount }] = await db.select({ n: sql<number>`count(*)::int` }).from(generationJobs).innerJoin(users, eq(users.id, generationJobs.userId)).where(where);
+  // One extra row tells us whether there's another page.
+  const want = limit + 1;
+  const runs =
+    offset < publishedCount
+      ? await hydrate(
+          await db
+            .select(jobCols)
+            .from(generationJobs)
+            .innerJoin(models, eq(models.id, generationJobs.modelId))
+            .innerJoin(users, eq(users.id, generationJobs.userId))
+            .leftJoin(presets, eq(presets.id, generationJobs.presetId))
+            .where(where)
+            .orderBy(desc(generationJobs.publishedAt), desc(generationJobs.id))
+            .limit(want)
+            .offset(offset),
+          viewerId,
+        )
+      : [];
+  const library = runs.length < want ? await listLibraryEntries(want - runs.length, undefined, { offset: Math.max(offset - publishedCount, 0) }) : [];
+  const all = [...runs, ...library];
+  return { entries: all.slice(0, limit), more: all.length > limit };
+}
+
 // Seed-collection rows presented in the log's shape. They are library items, labelled as
 // such, not runs: no job, no cost, no owner.
-export async function listLibraryEntries(limit = 20, id?: string): Promise<LogEntry[]> {
+// Random by default (home and the empty log show a different few each visit); the public log
+// page pages through them in a stable order instead, so "Show more" never repeats one.
+export async function listLibraryEntries(limit = 20, id?: string, page?: { offset: number }): Promise<LogEntry[]> {
   const rows = await db
     .select({ ...assetCols, modelId: assets.modelId, modelName: models.name, createdAt: assets.createdAt, topic: assets.topic })
     .from(assets)
     .innerJoin(models, eq(models.id, assets.modelId))
     .where(and(eq(assets.collection, "seed"), eq(assets.isPublic, true), isNull(assets.deletedAt), id ? eq(assets.id, id) : undefined))
-    .orderBy(sql`random()`)
-    .limit(Math.min(limit, 50));
+    .orderBy(...(page ? [desc(assets.createdAt), desc(assets.id)] : [sql`random()`]))
+    .limit(Math.min(limit, 50))
+    .offset(page?.offset ?? 0);
   return rows.map((a) => ({
     id: a.id,
     type: "library" as const,
