@@ -212,3 +212,22 @@ body {
     opacity: 0.35;
   }
 }
+
+/* The run in progress shimmers in live blue. */
+.docket .skeleton-live {
+  background-image: linear-gradient(110deg, transparent 30%, color-mix(in srgb, var(--color-live) 14%, transparent) 50%, transparent 70%);
+}
+
+/* The commit: a new entry prints itself into the log, top to bottom, while the meter drains.
+   The one orchestrated animation; reduced motion turns it off with the rest. */
+.docket .entry-new {
+  animation: entry-print 700ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+@keyframes entry-print {
+  from {
+    clip-path: inset(0 0 100% 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}

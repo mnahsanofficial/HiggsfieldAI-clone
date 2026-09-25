@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { sweepStaleJobs } from "@/lib/jobs/service";
 import { listMyLog, listPublicLog } from "@/lib/log/entries";
 
 // The log, read from Postgres. scope=mine is the caller's own runs; scope=public is
@@ -13,6 +14,7 @@ export async function GET(request: Request) {
 
   if (scope === "mine") {
     if (!user) return NextResponse.json({ entries: [], balanceTenths: null, signedIn: false });
+    await sweepStaleJobs(); // polling traffic drives the stale-job sweep; throttled inside
     return NextResponse.json({ entries: await listMyLog(user.id, { limit, before }), balanceTenths: user.creditBalanceTenths, signedIn: true });
   }
   return NextResponse.json({ entries: await listPublicLog(user?.id ?? null, { limit, before }), balanceTenths: user?.creditBalanceTenths ?? null, signedIn: !!user });

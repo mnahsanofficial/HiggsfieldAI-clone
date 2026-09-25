@@ -21,9 +21,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | # | Branch | State |
 |---|---|---|
 | 1 | `fix/backend-audit` | done (PR #22) |
-| 2 | `feat/design-system` | done |
-| 3 | `feat/make` create flow (image → camera move) | **next** |
-| 4 | library and history (the log) | todo |
+| 2 | `feat/design-system` | done (PR #23) |
+| 3 | `feat/make` create flow (image → camera move) | done |
+| 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | **next** |
 | 5 | home | todo |
 | 6 | credits, paywall, checkout | todo |
 | 7 | auth screens | todo |
@@ -41,6 +41,14 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Create flow (PR #24)
+- `/make` (`src/app/(docket)/make`, `components/docket/make/*`, data in `lib/docket/make-data.ts`). `?mode=move&still=<assetId>&move=<presetId>&prompt=` hand off into the loop.
+- The commit: the meter drains (balance frozen until the drain ends) while the new entry prints in (`.entry-new` clip-path, 700ms).
+- `useLog` polls `/api/log?scope=mine` only while something runs; it applies only the newest response (out-of-order responses briefly resurrected finished runs with a Cancel that 409'd, which the e2e caught). `/api/log` now runs the stale-job sweep.
+- Entry (`components/docket/log/entry.tsx`): media leads; video uses the compare handle against `renderedFrom` ("Library still" for examples); receipt line; Cancel / Try again / Move the camera over this / Download.
+- ROUTES points unbuilt pages at live ones: home and log to `/make`, credits and sign-in to the old pages. Flip each as its branch lands.
+- e2e: `node scripts/dev/ui-make-e2e.mjs <base> [dir] [--mobile]` (20 checks; `E2E_LIVE=1` adds a live render: LOCAL ONLY, never against Vercel).
 
 ## Design system (PR #23)
 - Tokens in `globals.css` `@theme` (`paper field line ink muted posted charged live`), `.docket` scope with the type scale (`t-display t-title t-body t-meta t-label`), focus ring, reduced motion.
