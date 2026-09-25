@@ -1,13 +1,19 @@
 # Docket
 
+## In 60 seconds
+
+1. **What it is:** Docket makes an image from your prompt, then renders a real camera move over it, and every run stays on the record: the model, the cost, any refund. [Design](#design)
+2. **The three biggest changes from Higgsfield:** one press to a first image instead of a seven-step quiz and four interruptions; the price on the button, with no countdowns and no struck-through "original"; and one log instead of separate History and Assets. [What I changed](#what-i-changed-from-higgsfield-and-why)
+3. **What's real:** every screen reads Postgres through the API, images come from FLUX.1 [schnell] on Cloudflare Workers AI, camera moves are rendered by ffmpeg, and every credit is on a ledger. Payments are the one labelled demo. [What's real](#whats-real)
+4. **Where to click first:** **Start making**, make an image, **Move the camera over this**, drag the handle, then **Open** the run's record. [What to click first](#what-to-click-first)
+5. **How it's checked:** a readiness run against production, in a fresh browser at 390px and 1440px, plus database and UI suites. [Verification](#verification)
+
 **Make an image, then move the camera over it. Every run stays on the record.**
 
 Docket makes an image from your prompt with FLUX.1 [schnell], then renders a real camera move over it with ffmpeg: a push-in, a pan, an arc, a rack focus, 14 in all. Everything you make lands in your log with its receipt: the model that ran, what it cost, how long it took, and any refund. The log is the library and the ledger at once.
 
 **Live:** https://higgsfield-ai-clone.vercel.app
 (The deployment keeps the name from the first brief, when this was a clone. See [History](#history-from-a-clone-to-docket).)
-
-**Start here:** [What I changed from Higgsfield, and why](#what-i-changed-from-higgsfield-and-why). It lists what I kept, changed and cut from the reference, with the capture for each.
 
 | Home | A camera move, compared against its still | A run's permanent record |
 |---|---|---|
