@@ -60,14 +60,3 @@ export function SkeletonVideo({ className = "", poster, onLoadedData, ref: exter
 export function SkeletonBlock({ className = "", style }: { className?: string; style?: React.CSSProperties }) {
   return <div aria-hidden className={`skeleton ${className}`} style={style} />;
 }
-
-// A masonry grid of placeholder tiles in the given aspect ratios, laid out like the real grids.
-export function SkeletonMasonry({ ratios, columns = "columns-2 sm:columns-3 lg:columns-4 xl:columns-5", rounded = "rounded-xl" }: { ratios: string[]; columns?: string; rounded?: string }) {
-  return (
-    <div className={`${columns} gap-2`} aria-hidden>
-      {ratios.map((r, i) => (
-        <div key={i} className={`skeleton mb-2 break-inside-avoid ${rounded}`} style={{ aspectRatio: r }} />
-      ))}
-    </div>
-  );
-}

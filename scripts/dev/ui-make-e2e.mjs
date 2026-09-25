@@ -120,7 +120,7 @@ try {
   }
 
   // 5. Not enough credits: the button becomes a way to get more, and nothing is charged.
-  const token = (await page.cookies()).find((c) => c.name === "hf_session")?.value;
+  const token = (await page.cookies()).find((c) => c.name === "docket_session")?.value;
   const userId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
   guestId = userId;
   execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "10"], { stdio: "ignore" });

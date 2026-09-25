@@ -13,7 +13,18 @@ function createPool() {
   }
   // pg treats sslmode=require as verify-full today and warns that this changes in v9;
   // state verify-full explicitly so behaviour stays the same after upgrading.
-  return new Pool({ connectionString: connectionString.replace("sslmode=require", "sslmode=verify-full"), max: 5 });
+  const pool = new Pool({
+    connectionString: connectionString.replace("sslmode=require", "sslmode=verify-full"),
+    max: 5,
+    // Drop idle connections before the database side does, and don't hang on a dead network.
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
+  // An idle client whose connection drops (Neon restarts it, the network blips) emits 'error' on
+  // the pool. With no listener that's an uncaught exception that takes the whole process down;
+  // the pool already discards the broken client, so log it and carry on.
+  pool.on("error", (err) => console.error("[db] idle client error, discarded:", err.message));
+  return pool;
 }
 
 export const pool = globalForDb.pgPool ?? createPool();

@@ -11,8 +11,8 @@ export type AuthResult = { ok: true; userId: string } | { ok: false; error: stri
 
 // Per-IP guest creation limit. Generous on purpose: reviewers in one office share an IP (NAT),
 // and a 6th person being told "too many guests" breaks the no-signup-wall promise. Quota abuse
-// is contained elsewhere (max 4 active jobs per user, the provider's daily cap with sample
-// fallback). Configurable for local testing.
+// is contained elsewhere (max 4 active jobs per user, and the daily image allowance per visitor,
+// per network and site-wide in lib/jobs/image-quota.ts). Configurable for local testing.
 export const GUESTS_PER_IP_PER_HOUR = Number(process.env.GUEST_LIMIT_PER_HOUR ?? 30);
 
 export function normaliseEmail(email: string) {

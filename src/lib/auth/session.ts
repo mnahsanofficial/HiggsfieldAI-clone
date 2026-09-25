@@ -2,7 +2,10 @@ import "server-only";
 import { jwtVerify, SignJWT } from "jose";
 import { cookies } from "next/headers";
 
-const COOKIE = "hf_session";
+const COOKIE = "docket_session";
+// Sessions issued before the app became Docket used this name. It's still read (so nobody's
+// guest runs are stranded by the rename) and is replaced by the new cookie on the next sign-in.
+const PREVIOUS_COOKIE = "hf_session";
 const MAX_AGE_S = 60 * 60 * 24 * 30;
 
 function key() {
@@ -18,7 +21,9 @@ export async function createSession(userId: string): Promise<void> {
     .setIssuedAt()
     .setExpirationTime(`${MAX_AGE_S}s`)
     .sign(key());
-  (await cookies()).set(COOKIE, token, {
+  const jar = await cookies();
+  jar.delete(PREVIOUS_COOKIE);
+  jar.set(COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
@@ -28,7 +33,8 @@ export async function createSession(userId: string): Promise<void> {
 }
 
 export async function readSessionUserId(): Promise<string | null> {
-  const token = (await cookies()).get(COOKIE)?.value;
+  const jar = await cookies();
+  const token = jar.get(COOKIE)?.value ?? jar.get(PREVIOUS_COOKIE)?.value;
   if (!token) return null;
   try {
     const { payload } = await jwtVerify(token, key(), { algorithms: ["HS256"] });
@@ -39,5 +45,7 @@ export async function readSessionUserId(): Promise<string | null> {
 }
 
 export async function destroySession(): Promise<void> {
-  (await cookies()).delete(COOKIE);
+  const jar = await cookies();
+  jar.delete(COOKIE);
+  jar.delete(PREVIOUS_COOKIE);
 }

@@ -1,14 +1,7 @@
 @import "tailwindcss";
 
-/* Dark-only product, like the reference. Accent is the reference's acid lime. */
+/* Docket's colours, named for what they are in a record, not for their hue. */
 @theme {
-  --color-background: #0b0b0c;
-  --color-foreground: #f4f4f5;
-  --color-accent: #d4ff3f;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-
-  /* Docket. Named for what they are in a record, not for their hue. */
   --color-paper: #fcfcfa; /* the page */
   --color-field: #efefeb; /* entry blocks and inputs: the layout is filled blocks, not hairlines */
   --color-line: #d9dad4; /* the one border colour, for block edges */
@@ -18,19 +11,13 @@
   --color-charged: #b3341f; /* credits out, failures */
   --color-live: #2457e6; /* focus and the run in progress */
   --font-docket: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-docket);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light;
+  background: var(--color-paper);
 }
-
-body {
-  background: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-}
-
-/* ---------- Docket ---------------------------------------------------------------------- */
 
 .docket {
   color-scheme: light;
@@ -88,40 +75,11 @@ body {
   }
 }
 
-/* Native <select> styled as a composer chip; keeps the platform picker on phones. */
-.chip-select {
-  appearance: none;
-  height: 100%;
-  background: transparent;
-  color: inherit;
-  padding: 0 1.75rem 0 0.75rem;
-  cursor: pointer;
-  outline: none;
-  font: inherit;
-}
-.chip-select:focus-visible {
-  outline: none;
-}
-/* iOS Safari zooms the page when a focused control's text is under 16px. */
-@media (max-width: 639px) {
-  .chip-select {
-    font-size: 16px;
-  }
-}
-.chip-select option {
-  background: #161618;
-}
-
 /* Skeleton: the shape of what's loading, with a slow shimmer. Media elements carry it until their
-   first frame paints (components/media/skeleton-media.tsx); route loading states use it for blocks. */
+   first frame paints (components/media/skeleton-media.tsx); loading states use it for blocks. */
 .skeleton {
-  background-color: #161618;
-  background-image: linear-gradient(110deg, transparent 30%, rgba(255, 255, 255, 0.055) 50%, transparent 70%);
   background-size: 250% 100%;
   animation: skeleton-shimmer 1.6s linear infinite;
-}
-.skeleton-accent {
-  background-image: linear-gradient(110deg, transparent 30%, rgba(212, 255, 63, 0.09) 50%, transparent 70%);
 }
 @keyframes skeleton-shimmer {
   from {
@@ -129,11 +87,6 @@ body {
   }
   to {
     background-position: -125% 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
   }
 }
 
