@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { Compare } from "@/components/ui/compare";
 import { CostMeter } from "@/components/ui/cost-meter";
 import { Field, TextArea } from "@/components/ui/field";
 import { Segmented } from "@/components/ui/segmented";
 import { formatCredits } from "@/lib/credits/format";
+import type { HomePair } from "@/lib/docket/home-pair";
 import type { ImageQuota } from "@/lib/jobs/image-quota";
 import type { LogEntry } from "@/lib/log/entries";
 import { Entry } from "../log/entry";
@@ -26,6 +28,7 @@ export function HomePage({
   publicEntries,
   moveCount,
   liveRenders,
+  pair,
 }: {
   signedIn: boolean;
   balanceTenths: number;
@@ -35,6 +38,7 @@ export function HomePage({
   publicEntries: LogEntry[];
   moveCount: number;
   liveRenders: number;
+  pair: HomePair | null;
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -68,56 +72,80 @@ export function HomePage({
   }
 
   const shown = mine.length ? mine : publicEntries;
+  const starter = !signedIn && (
+    <p className="t-meta" data-testid="starter">
+      No account needed: you start with {formatCredits(balanceTenths)} free credits, up to {quota.perVisitor} images a day and {liveRenders} live camera {liveRenders === 1 ? "move" : "moves"}.
+    </p>
+  );
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-12 px-4 py-8 sm:py-12">
-      <section aria-labelledby="home-heading" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center">
-        <div className="flex flex-col gap-4">
-          <h1 id="home-heading" className="t-display max-w-2xl">
-            Make an image, then move the camera over it. Every run stays on the record.
-          </h1>
-          <p className="t-body max-w-xl text-muted">
-            Images come from FLUX.1 [schnell] when you ask. The {moveCount} camera moves are rendered over them with ffmpeg, frame by frame.
-          </p>
+      <section aria-labelledby="home-heading" className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-12">
+        <div className="flex min-w-0 flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <h1 id="home-heading" className="t-display">
+              Docket makes an image, then moves the camera over it.
+            </h1>
+            <p className="t-body max-w-2xl text-muted">
+              Every run stays on the record: the model that ran, what it cost, and any refund. Images come from FLUX.1 [schnell] when you ask; the {moveCount} camera moves are rendered over them with ffmpeg, frame by frame.
+            </p>
+          </div>
+          {pair && (
+            <figure className="flex flex-col gap-2" data-testid="home-pair">
+              <Compare
+                still={{ url: pair.still.url, alt: pair.still.prompt ?? "The still" }}
+                take={{ url: pair.take.url, posterUrl: pair.take.posterUrl, label: `${pair.presetName}, rendered over the still` }}
+                width={pair.take.width}
+                height={pair.take.height}
+                stillLabel="Library still"
+              />
+              <figcaption className="t-meta">
+                {pair.presetName}, rendered with ffmpeg over a library still: this move&apos;s preview, straight from the renderer. Drag the handle to compare.
+              </figcaption>
+            </figure>
+          )}
         </div>
 
-        <form
-          className="flex flex-col gap-4 rounded-2xl bg-field p-4 sm:p-5"
-          aria-label="Make an image"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (prompt.trim() && allowance > 0 && !short) void make();
-          }}
-        >
-          <Field id="home-prompt" label="Describe the image">
-            <TextArea id="home-prompt" rows={3} maxLength={2000} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="A lighthouse on black rocks at dusk, storm clouds, long exposure" />
-          </Field>
-          <ImageAllowance quota={quota} />
-          {allowance > 0 && <CostMeter costTenths={imageCostTenths} balanceTenths={balanceTenths} />}
-          {allowance === 0 ? (
+        {allowance === 0 ? (
+          // Out of today's images: lead with what still works, and say why second.
+          <section aria-label="Make something" className="flex flex-col gap-4 self-start rounded-2xl bg-field p-4 sm:p-5">
             <ButtonLink href={`${ROUTES.make}?mode=move`} size="lg">
               Move the camera over a library image
             </ButtonLink>
-          ) : short ? (
-            <ButtonLink href={ROUTES.credits} size="lg">
-              Get more credits
-            </ButtonLink>
-          ) : (
-            <Button type="submit" size="lg" pending={pending} disabled={!prompt.trim() || allowance === 0}>
-              Make the image
-            </Button>
-          )}
-          {error && (
-            <p role="alert" className="t-body text-charged">
-              {error}
-            </p>
-          )}
-          {!signedIn && (
-            <p className="t-meta" data-testid="starter">
-              No account needed: you start with {formatCredits(balanceTenths)} free credits, up to {quota.perVisitor} images a day and {liveRenders} live camera {liveRenders === 1 ? "move" : "moves"}.
-            </p>
-          )}
-        </form>
+            <ImageAllowance quota={quota} />
+            {starter}
+          </section>
+        ) : (
+          <form
+            className="flex flex-col gap-4 self-start rounded-2xl bg-field p-4 sm:p-5"
+            aria-label="Make an image"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (prompt.trim() && !short) void make();
+            }}
+          >
+            <Field id="home-prompt" label="Describe the image">
+              <TextArea id="home-prompt" rows={3} maxLength={2000} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder="A lighthouse on black rocks at dusk, storm clouds, long exposure" />
+            </Field>
+            <ImageAllowance quota={quota} />
+            <CostMeter costTenths={imageCostTenths} balanceTenths={balanceTenths} />
+            {short ? (
+              <ButtonLink href={ROUTES.credits} size="lg">
+                Get more credits
+              </ButtonLink>
+            ) : (
+              <Button type="submit" size="lg" pending={pending} disabled={!prompt.trim()}>
+                Make the image
+              </Button>
+            )}
+            {error && (
+              <p role="alert" className="t-body text-charged">
+                {error}
+              </p>
+            )}
+            {starter}
+          </form>
+        )}
       </section>
 
       <section aria-labelledby="log-heading" className="flex flex-col gap-6">

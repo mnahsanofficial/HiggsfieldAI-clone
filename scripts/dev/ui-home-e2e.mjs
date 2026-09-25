@@ -30,7 +30,14 @@ try {
   await page.waitForSelector("[data-entry]");
   const home = await text(page);
   if (!(await page.$eval("[data-quota]", (e) => e.innerText)).startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
-  check("headline says what Docket is", home.includes("Make an image, then move the camera over it") && home.includes("FLUX.1 [schnell]") && home.includes("14 camera moves") && home.includes("ffmpeg"));
+  check("one h1, and it says what Docket is", (await page.$$eval("h1", (h) => h.map((x) => x.textContent.trim()))).join("|") === "Docket makes an image, then moves the camera over it.");
+  check("the first HTML is the page itself (headline before any skeleton)", await (async () => { const html = await (await fetch(`${base}/`)).text(); const h1 = html.indexOf("<h1"); return h1 > 0 && !html.slice(0, h1).includes('aria-busy="true"'); })());
+  const pair = await page.$('[data-testid="home-pair"] [role="slider"]');
+  check("a real still-and-take pair with the handle, at the top", !!pair && (await page.$eval('[data-testid="home-pair"]', (f) => f.innerText)).includes("rendered with ffmpeg over a library still"));
+  await page.focus('[data-testid="home-pair"] [role="slider"]');
+  await page.keyboard.press("ArrowRight");
+  check("the handle works from the keyboard", (await page.$eval('[data-testid="home-pair"] [role="slider"]', (s) => s.getAttribute("aria-valuenow"))) === "55");
+  check("the public log shows camera moves too, labelled pre-rendered examples", (await page.$$('main section[aria-labelledby="log-heading"] [data-entry] [role="slider"]')).length >= 1 && home.includes("Pre-rendered example"));
   check("the make box shows the price, and the starter states its limits", home.includes("Costs 2") && (await page.$eval('[data-testid="starter"]', (e) => e.innerText)).includes("100 free credits, up to 5 images a day and 1 live camera move"));
   check("signed out: the public log, library entries, media first", home.includes("The public log") && (await page.$$("[data-entry] img")).length >= 6);
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
@@ -56,6 +63,14 @@ try {
   const back = await text(page);
   check("home now shows your latest runs, private unless published", back.includes("Your latest runs") && back.includes("hand-bound notebooks") && back.includes("Private unless you publish them") && back.includes("You can make 4 more today"));
   await shot(page, "3-home-yours");
+
+  // Out of today's images: home leads with what still works, and the quota note comes second.
+  for (let i = 0; i < 4; i++) execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/fixture-run.ts", guestId, `used up ${i}`], { stdio: "ignore" });
+  await page.goto(`${base}/`, { waitUntil: "load" });
+  await page.waitForSelector('[aria-label="Make something"]');
+  const order = await page.$eval('[aria-label="Make something"]', (b) => { const a = b.querySelector("a"); const q = b.querySelector("[data-quota]"); return { primary: a?.textContent.trim(), primaryFirst: !!(a && q && a.compareDocumentPosition(q) & Node.DOCUMENT_POSITION_FOLLOWING), note: q?.innerText ?? "" }; });
+  check("out of images: 'Move the camera over a library image' is the primary action, the quota note second", order.primary === "Move the camera over a library image" && order.primaryFirst && order.note.includes("images for today") && !(await page.$("#home-prompt")), JSON.stringify(order));
+  await shot(page, "4-home-out-of-images");
 } catch (e) {
   console.log(results.join("\n"));
   throw e;
