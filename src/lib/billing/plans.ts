@@ -15,6 +15,8 @@ export type PlanView = {
   priceMonthlyCents: number;
   priceAnnualCents: number;
   outcomes: string[];
+  imageCount: number;
+  videoCount: number;
 };
 
 // Plans with their credits translated into outcomes from the real model prices, never left
@@ -37,6 +39,8 @@ export async function listPlans(): Promise<PlanView[]> {
     monthlyCreditsTenths: p.monthlyCreditsTenths,
     priceMonthlyCents: p.priceMonthlyCents,
     priceAnnualCents: p.priceAnnualCents,
+    imageCount: Math.floor(p.monthlyCreditsTenths / imageCost),
+    videoCount: Math.floor(p.monthlyCreditsTenths / videoCost),
     outcomes: [
       `= ${Math.floor(p.monthlyCreditsTenths / imageCost).toLocaleString("en-US")} FLUX.1 [schnell] images`,
       `~ ${Math.floor(p.monthlyCreditsTenths / videoCost).toLocaleString("en-US")} camera-move videos (5s, 720p)`,

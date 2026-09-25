@@ -25,9 +25,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 | 3 | `feat/make` create flow (image → camera move) | done (PR #24) |
 | 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | done |
 | 4a | `feat/image-quota` (owner: free tier, 5/visitor/day, show the real count) | done (PR #26) |
-| 5 | `feat/home` (Docket home at `/next`) | done |
-| 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | **next** |
-| 7 | switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
+| 5 | `feat/home` (Docket home at `/next`) | done (PR #27) |
+| 6 | `feat/credits-auth` (lean restyle; AHSAN345 keeps working) | done |
+| 7 | **next**: switch-over: Docket at `/`, legacy deleted, old paths redirected, no Higgsfield identity | todo |
 | 8 | README rewrite + readiness check on production (fresh browser, 390 and 1440) | todo |
 
 Owner's changes to the chosen direction, to hold to while building:
@@ -41,6 +41,15 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## Credits and auth (PR #28)
+- `/next/credits` (`components/docket/credits/*`): balance and what it buys, account (guest → create an account; registered → sign out), plans from `listPlans()` (now with `imageCount`/`videoCount`), demo checkout in a Sheet. Card helpers live in `lib/billing/card-format.ts`. AHSAN345 unchanged; once-per-plan unchanged.
+- `/sign-in`, `/sign-up` (`components/docket/auth/auth-form.tsx`) on the existing server actions; sign-out now lands on Docket's home.
+- `Sheet` fix: a queued `close` event from our own `close()` could close a sheet reopened right after. Only a browser-made close of a sheet we still want open counts now.
+- `/log` list view shows credit movements even before your first run.
+- Plan taglines were Higgsfield's wording (recon capture 23); replaced in the catalogue and reseeded.
+- e2e: `node scripts/dev/ui-credits-e2e.mjs <base> [dir] [--mobile]` (18 checks; no images made).
+- Local runs occasionally fail on transient Neon connection errors from this laptop ("Authentication timed out"); the page shows its error state. Not seen on Vercel.
 
 ## Home (PR #27)
 - `/next` (`app/(docket)/next`, `components/docket/home/home-page.tsx`): one line, the make box with the real allowance and price, then your latest runs or the public log, media first with a list toggle. Making from home lands the run on `/make`. Moves to `/` at switch-over.

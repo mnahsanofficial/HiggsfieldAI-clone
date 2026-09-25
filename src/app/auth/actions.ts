@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { createGuest, registerUser, signIn } from "@/lib/auth/accounts";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { createSession, destroySession } from "@/lib/auth/session";
+import { clientIp } from "@/lib/jobs/image-quota";
+import { ROUTES } from "@/components/docket/routes";
 
 export type AuthFormState = { error?: string; field?: "email" | "password" | "name"; email?: string } | undefined;
 
@@ -39,9 +41,7 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
 export async function guestAction(_prev: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const current = await getCurrentUser();
   if (current) redirect(safeNext(formData.get("next")));
-  const h = await headers();
-  const ip = h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null;
-  const result = await createGuest(ip);
+  const result = await createGuest(clientIp(await headers()));
   if (!result.ok) return { error: result.error };
   await createSession(result.userId);
   redirect(safeNext(formData.get("next")));
@@ -49,5 +49,5 @@ export async function guestAction(_prev: AuthFormState, formData: FormData): Pro
 
 export async function signOutAction(): Promise<void> {
   await destroySession();
-  redirect("/");
+  redirect(ROUTES.home);
 }

@@ -6,6 +6,10 @@ import { type ReactNode, useEffect, useRef } from "react";
 // A bottom sheet on phones, a centred panel from sm up.
 export function Sheet({ open, onClose, title, children, wide = false }: { open: boolean; onClose: () => void; title: string; children: ReactNode; wide?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const wantOpen = useRef(open);
+  useEffect(() => {
+    wantOpen.current = open;
+  }, [open]);
   useEffect(() => {
     const d = ref.current;
     if (!d) return;
@@ -16,7 +20,11 @@ export function Sheet({ open, onClose, title, children, wide = false }: { open: 
   return (
     <dialog
       ref={ref}
-      onClose={onClose}
+      // The close event is queued, so one from our own close() can arrive after the sheet has been
+      // reopened. Only a close the browser made (Escape) on a sheet we still want open counts.
+      onClose={() => {
+        if (wantOpen.current && !ref.current?.open) onClose();
+      }}
       onClick={(e) => e.target === ref.current && onClose()}
       aria-label={title}
       className={`docket-sheet ${wide ? "sm:max-w-3xl" : "sm:max-w-lg"}`}
