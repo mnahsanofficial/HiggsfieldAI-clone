@@ -5,6 +5,7 @@
 // action, and a short strip of the public log. Then the public log page pages to the end without
 // repeats, and a guest who has used today's images gets the camera move as the primary action.
 // Deletes its guest afterwards.
+// Against a live deployment it runs read-only (no fixture runs, nothing spent).
 // usage: node scripts/dev/ui-home-e2e.mjs <baseUrl> [screenshotDir] [--mobile]
 import puppeteer from "puppeteer-core";
 import { execFileSync } from "node:child_process";
@@ -27,8 +28,12 @@ let guestId = null;
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: mkdtempSync(join(tmpdir(), "docket-home-")), args: ["--no-first-run"] });
 try {
   const api = await (await fetch(`${base}/api/log?scope=public&limit=1`)).json();
-  if (!api.quota?.testMode) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
   const q = api.quota;
+  // Off fixture mode (e.g. production) the run is read-only: it checks whichever state the live
+  // allowance calls for and skips the step that seeds a used-up guest.
+  const readOnly = !q?.testMode;
+  const outNow = Math.min(q.siteLeft, q.yoursLeft) === 0;
+  if (readOnly) results.push(`NOTE  read-only run against a live allowance (${q.siteLeft} of ${q.siteCapacity} left today)`);
 
   const page = await browser.newPage();
   await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
@@ -75,7 +80,9 @@ try {
   // 6. One primary action, one secondary; no make box on home.
   const actions = await page.$$eval('[data-testid="home-actions"] a', (as) => as.map((a) => ({ t: a.textContent.trim(), href: a.getAttribute("href"), primary: a.className.includes("bg-ink") })));
   const primaries = await page.$$eval("main a, main button", (els) => els.filter((e) => e.className.includes("bg-ink") && !e.closest('[data-testid="home-pair"]')).length);
-  check("one primary action, 'Start making' → /make, and a secondary to the public log", primaries === 1 && actions[0]?.t === "Start making" && actions[0]?.href === "/make" && actions[0]?.primary && actions[1]?.href === "/log?scope=public" && !actions[1]?.primary, JSON.stringify(actions));
+  const want = outNow ? { t: "Move the camera over a library image", href: "/make?mode=move" } : { t: "Start making", href: "/make" };
+  check(`one primary action, '${want.t}' → ${want.href}, and a secondary to the public log`, primaries === 1 && actions[0]?.t === want.t && actions[0]?.href === want.href && actions[0]?.primary && actions[1]?.href === "/log?scope=public" && !actions[1]?.primary, JSON.stringify(actions));
+  if (outNow) check("out of images today: the quota note sits right under the primary action", await page.$eval('[data-testid="home-actions"]', (b) => { const [a, second] = b.querySelectorAll("a"); const note = b.querySelector("[data-quota]"); return !!(note && a.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING && note.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING); }));
   check("home has no make box: /make does the making", !(await page.$("main form")) && !(await page.$("textarea")));
 
   // 7. The public log is a short strip, with a way to all of it.
@@ -97,20 +104,23 @@ try {
   check("show more adds the next page, no repeats", after.length > before.length && new Set(after).size === after.length, `${before.length} → ${after.length}`);
 
   // 9. Out of today's images: the camera move becomes the primary action, the quota note under it.
-  await page.goto(`${base}/`, { waitUntil: "load" });
-  const g = await page.evaluate(async () => (await fetch("/api/auth/guest", { method: "POST" })).status);
-  const token = (await page.cookies()).find((c) => c.name === "docket_session")?.value;
-  guestId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
-  for (let i = 0; i < q.perVisitor; i++) execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/fixture-run.ts", guestId, `used up ${i}`], { stdio: "ignore" });
-  await page.goto(`${base}/`, { waitUntil: "networkidle0" });
-  const order = await page.$eval('[data-testid="home-actions"]', (b) => {
-    const [a, second] = b.querySelectorAll("a");
-    const note = b.querySelector("[data-quota]");
-    return { primary: a?.textContent.trim(), noteUnderPrimary: !!(a && note && a.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING && second && note.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING), note: note?.innerText ?? "", secondary: second?.textContent.trim() };
-  });
-  check("out of images: 'Move the camera over a library image' is primary, the quota note right under it", g === 201 || g === 200 ? order.primary === "Move the camera over a library image" && order.noteUnderPrimary && order.note.includes("images for today") : false, JSON.stringify(order));
-  check("a guest's free-to-start line shows their balance", /^You have \d+ credits\./.test(await inner(page, '[data-testid="starter"]')));
-  await shot(page, "3-home-out-of-images", true);
+  // Needs fixture runs to use up a guest's day, so only on a fixture server.
+  if (!readOnly) {
+    await page.goto(`${base}/`, { waitUntil: "load" });
+    const g = await page.evaluate(async () => (await fetch("/api/auth/guest", { method: "POST" })).status);
+    const token = (await page.cookies()).find((c) => c.name === "docket_session")?.value;
+    guestId = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString()).sub;
+    for (let i = 0; i < q.perVisitor; i++) execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/fixture-run.ts", guestId, `used up ${i}`], { stdio: "ignore" });
+    await page.goto(`${base}/`, { waitUntil: "networkidle0" });
+    const order = await page.$eval('[data-testid="home-actions"]', (b) => {
+      const [a, second] = b.querySelectorAll("a");
+      const note = b.querySelector("[data-quota]");
+      return { primary: a?.textContent.trim(), noteUnderPrimary: !!(a && note && a.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING && second && note.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING), note: note?.innerText ?? "", secondary: second?.textContent.trim() };
+    });
+    check("out of images: 'Move the camera over a library image' is primary, the quota note right under it", g === 201 || g === 200 ? order.primary === "Move the camera over a library image" && order.noteUnderPrimary && order.note.includes("images for today") : false, JSON.stringify(order));
+    check("a guest's free-to-start line shows their balance", /^You have \d+ credits\./.test(await inner(page, '[data-testid="starter"]')));
+    await shot(page, "3-home-out-of-images", true);
+  }
 } catch (e) {
   console.log(results.join("\n"));
   throw e;
