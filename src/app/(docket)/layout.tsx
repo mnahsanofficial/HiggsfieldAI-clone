@@ -1,7 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { DocketHeader } from "@/components/docket/header";
 
+const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+
 export const metadata: Metadata = {
+  // Absolute URLs for share previews of published runs.
+  metadataBase: new URL(host ? `https://${host}` : "http://localhost:3000"),
   title: { default: "Docket", template: "%s · Docket" },
   description: "Make an image, then direct a camera move over it. Every run on the record: the model that ran, what it cost, and any refund.",
 };

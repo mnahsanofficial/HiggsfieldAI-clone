@@ -46,6 +46,8 @@ export type LogEntry = {
   costTenths: number;
   chargedTenths: number;
   refundedTenths: number;
+  // Your balance right after this run's last ledger movement (null when nothing moved).
+  balanceAfterTenths: number | null;
   settlement: "charged" | "refunded" | "free";
   errorCode: string | null;
   errorMessage: string | null;
@@ -142,6 +144,7 @@ async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntr
         jobId: creditLedger.jobId,
         charged: sql<number>`coalesce(sum(case when ${creditLedger.reason} = 'generation_charge' then -${creditLedger.deltaTenths} else 0 end), 0)::int`,
         refunded: sql<number>`coalesce(sum(case when ${creditLedger.reason} = 'generation_refund' then ${creditLedger.deltaTenths} else 0 end), 0)::int`,
+        balanceAfter: sql<number | null>`(array_agg(${creditLedger.balanceAfterTenths} order by ${creditLedger.createdAt} desc, ${creditLedger.id} desc))[1]`,
       })
       .from(creditLedger)
       .where(inArray(creditLedger.jobId, ids))
@@ -167,6 +170,7 @@ async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntr
       costTenths: j.costTenths,
       chargedTenths: charged,
       refundedTenths: refunded,
+      balanceAfterTenths: m?.balanceAfter ?? null,
       settlement: charged === 0 ? "free" : refunded >= charged ? "refunded" : "charged",
       errorCode: j.errorCode,
       errorMessage: j.errorMessage,
@@ -201,7 +205,11 @@ export async function listMyLog(userId: string, opts: { limit?: number; before?:
 // so a first visit is never an empty page. Nothing a guest makes appears here.
 export async function listPublicLog(viewerId: string | null, opts: { limit?: number; before?: string } = {}): Promise<LogEntry[]> {
   const limit = Math.min(opts.limit ?? 20, 50);
-  const where = [isNotNull(generationJobs.publishedAt), eq(users.kind, "registered")];
+  const where = [
+    isNotNull(generationJobs.publishedAt),
+    eq(users.kind, "registered"),
+    sql`EXISTS (SELECT 1 FROM ${assets} WHERE ${assets.jobId} = ${generationJobs.id} AND ${assets.deletedAt} IS NULL)`,
+  ];
   if (opts.before) where.push(lt(generationJobs.publishedAt, new Date(opts.before)));
   const rows = await db
     .select(jobCols)
@@ -219,12 +227,12 @@ export async function listPublicLog(viewerId: string | null, opts: { limit?: num
 
 // Seed-collection rows presented in the log's shape. They are library items, labelled as
 // such, not runs: no job, no cost, no owner.
-export async function listLibraryEntries(limit = 20): Promise<LogEntry[]> {
+export async function listLibraryEntries(limit = 20, id?: string): Promise<LogEntry[]> {
   const rows = await db
     .select({ ...assetCols, modelId: assets.modelId, modelName: models.name, createdAt: assets.createdAt, topic: assets.topic })
     .from(assets)
     .innerJoin(models, eq(models.id, assets.modelId))
-    .where(and(eq(assets.collection, "seed"), eq(assets.isPublic, true), isNull(assets.deletedAt)))
+    .where(and(eq(assets.collection, "seed"), eq(assets.isPublic, true), isNull(assets.deletedAt), id ? eq(assets.id, id) : undefined))
     .orderBy(sql`random()`)
     .limit(Math.min(limit, 50));
   return rows.map((a) => ({
@@ -242,6 +250,7 @@ export async function listLibraryEntries(limit = 20): Promise<LogEntry[]> {
     costTenths: 0,
     chargedTenths: 0,
     refundedTenths: 0,
+    balanceAfterTenths: null,
     settlement: "free" as const,
     errorCode: null,
     errorMessage: null,
@@ -275,7 +284,46 @@ export async function getLogEntry(id: string, viewerId: string | null): Promise<
     )
     .limit(1);
   const [entry] = await hydrate(rows, viewerId);
-  return entry ?? null;
+  if (entry) return entry;
+  // Library items in the public log have permalinks too.
+  const [item] = /^[0-9a-f-]{36}$/i.test(id) ? await listLibraryEntries(1, id) : [];
+  return item ?? null;
+}
+
+// Credit movements that aren't runs (welcome credits, plan credits, adjustments), for the
+// list view: with them, the log reconciles with the balance line by line.
+export type CreditEvent = { id: string; reason: string; note: string | null; deltaTenths: number; balanceAfterTenths: number; createdAt: string };
+
+export async function listCreditEvents(userId: string, window: { after?: string; before?: string }): Promise<CreditEvent[]> {
+  const rows = await db
+    .select({ id: creditLedger.id, reason: creditLedger.reason, note: creditLedger.note, deltaTenths: creditLedger.deltaTenths, balanceAfterTenths: creditLedger.balanceAfterTenths, createdAt: creditLedger.createdAt })
+    .from(creditLedger)
+    .where(
+      and(
+        eq(creditLedger.userId, userId),
+        isNull(creditLedger.jobId),
+        window.after ? sql`${creditLedger.createdAt} >= ${new Date(window.after)}` : undefined,
+        window.before ? lt(creditLedger.createdAt, new Date(window.before)) : undefined,
+      ),
+    )
+    .orderBy(desc(creditLedger.createdAt))
+    .limit(100);
+  return rows.map((r) => ({ ...r, id: String(r.id), createdAt: r.createdAt.toISOString() }));
+}
+
+// Removing a run's output: the images or video are soft-deleted and the run leaves the public
+// log in the same transaction. The run itself stays on the record, with what it cost.
+export async function deleteOutputs(userId: string, jobId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const [job] = await tx
+      .update(generationJobs)
+      .set({ publishedAt: null })
+      .where(and(eq(generationJobs.id, jobId), eq(generationJobs.userId, userId)))
+      .returning({ id: generationJobs.id });
+    if (!job) return false;
+    await tx.update(assets).set({ deletedAt: sql`now()` }).where(and(eq(assets.jobId, jobId), eq(assets.userId, userId), isNull(assets.deletedAt)));
+    return true;
+  });
 }
 
 export class PublishError extends Error {}

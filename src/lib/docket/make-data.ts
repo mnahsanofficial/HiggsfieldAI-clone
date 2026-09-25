@@ -1,5 +1,5 @@
 import "server-only";
-import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { db } from "@/db";
 import { assets, models, type PresetMotion, presets } from "@/db/schema";
@@ -74,7 +74,8 @@ export async function getMakeData(user: CurrentUser | null): Promise<MakeData> {
       ? db
           .select({ id: assets.id, url: assets.url, width: assets.width, height: assets.height, prompt: assets.prompt })
           .from(assets)
-          .where(and(eq(assets.userId, user.id), eq(assets.kind, "image"), eq(assets.source, "generated"), isNull(assets.deletedAt)))
+          // Only images with a run behind them: example copies from signup aren't "yours".
+          .where(and(eq(assets.userId, user.id), eq(assets.kind, "image"), eq(assets.source, "generated"), isNotNull(assets.jobId), isNull(assets.deletedAt)))
           .orderBy(desc(assets.createdAt))
           .limit(80)
       : Promise.resolve([]),
