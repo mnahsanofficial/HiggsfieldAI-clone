@@ -8,6 +8,7 @@ import { priceJob } from "@/lib/credits/pricing";
 import { STARTER_CREDITS_TENTHS } from "@/lib/credits/starter";
 import { clientIp, hashIp, imageQuota } from "@/lib/jobs/image-quota";
 import { listMyLog, listPublicLog } from "@/lib/log/entries";
+import { liveRendersFor } from "@/lib/billing/limits";
 
 export const metadata = { title: { absolute: "Docket: make an image, then move the camera over it" } };
 
@@ -29,6 +30,7 @@ export default async function Home() {
       mine={mine}
       publicEntries={publicEntries}
       moveCount={moveCount}
+      liveRenders={liveRendersFor(user?.kind ?? null)}
     />
   );
 }

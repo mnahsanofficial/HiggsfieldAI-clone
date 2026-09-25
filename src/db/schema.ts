@@ -46,6 +46,12 @@ export const assetSource = pgEnum("asset_source", [
 ]);
 export const modelBadge = pgEnum("model_badge", ["top", "new"]);
 
+// The image provider's free allocation: 10,000 neurons a day, and FLUX.1 schnell at 1024x1024
+// and 4 steps costs 172.8 neurons (4 tiles at 4.8, plus 4 tiles x 4 steps at 9.6). That is 57
+// images a day, which matches the 58th call being the one refused on 2026-09-25. Every real
+// provider call reserves one here first; the CHECK makes the ceiling a database guarantee.
+export const IMAGE_CALLS_PER_DAY = 57;
+
 export const plans = pgTable("plans", {
   id: text("id").primaryKey(), // 'free' | 'basic' | 'pro' | 'max'
   name: text("name").notNull(),
@@ -56,7 +62,10 @@ export const plans = pgTable("plans", {
   priceAnnualCents: integer("price_annual_cents").notNull(),
   // Credits translated into outcomes, e.g. ["= 300 image generations", "~ 27 videos"].
   outcomes: jsonb("outcomes").$type<string[]>().notNull().default([]),
-});
+  // How many images a day an account on this plan can make: the one value both the cap and
+  // every plan card read. At most the site's whole daily allowance.
+  imagesPerDay: smallint("images_per_day").notNull().default(5),
+}, (t) => [check("plans_images_per_day_range", sql`${t.imagesPerDay} BETWEEN 1 AND ${sql.raw(String(IMAGE_CALLS_PER_DAY))}`)]);
 
 // Demo promo codes. In the database rather than in code, so what a code does is data the
 // API reads, and adding one needs no deploy. No code here takes money: see plans.
@@ -263,11 +272,6 @@ export const creditLedger = pgTable(
 // the 1,500 hard stop a database guarantee rather than an application convention.
 export const BLOB_PUTS_MONTHLY_CAP = 1500;
 
-// The image provider's free allocation: 10,000 neurons a day, and FLUX.1 schnell at 1024x1024
-// and 4 steps costs 172.8 neurons (4 tiles at 4.8, plus 4 tiles x 4 steps at 9.6). That is 57
-// images a day, which matches the 58th call being the one refused on 2026-09-25. Every real
-// provider call reserves one here first; the CHECK makes the ceiling a database guarantee.
-export const IMAGE_CALLS_PER_DAY = 57;
 export const imageUsage = pgTable(
   "image_usage",
   {

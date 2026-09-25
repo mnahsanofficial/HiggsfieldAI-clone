@@ -187,7 +187,7 @@ export function ImageAllowance({ quota: q }: { quota: ImageQuota }) {
   } else if (q.yoursLeft === 0) {
     line = (
       <>
-        <span className="font-semibold text-ink">You&apos;ve made your {q.perVisitor} free images today.</span> More at 00:00 UTC, in {q.resetsIn}. Camera moves still work.
+        <span className="font-semibold text-ink">You&apos;ve made your {q.perVisitor} images for today.</span> More at 00:00 UTC, in {q.resetsIn}. Camera moves still work.
         {!q.testMode && ` ${q.siteLeft} ${plural(q.siteLeft)} left for everyone else.`}
       </>
     );

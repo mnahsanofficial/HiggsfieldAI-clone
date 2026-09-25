@@ -14,6 +14,8 @@ import { formatCredits } from "@/lib/credits/format";
 import { ROUTES } from "../routes";
 import { Checkout, CheckoutDone, type CheckoutResult } from "./checkout";
 
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
 type Account = { kind: "signed-out" } | { kind: "guest" } | { kind: "registered"; email: string };
 
 // Credits: your balance and what it buys, your account, and the plans. Buying is a labelled
@@ -22,7 +24,7 @@ export function CreditsPage({
   balanceTenths,
   imageCostTenths,
   videoCostTenths,
-  perVisitorImages,
+  limits,
   account,
   plans,
   currentPlanId,
@@ -30,7 +32,8 @@ export function CreditsPage({
   balanceTenths: number;
   imageCostTenths: number;
   videoCostTenths: number;
-  perVisitorImages: number;
+  // The viewer's real limits, from the values that enforce them.
+  limits: { imagesPerDay: number; imagesLeftToday: number; siteImagesPerDay: number; liveRenders: number; liveRendersLeft: number; liveRendersWithAccount: number };
   account: Account;
   plans: PlanView[];
   currentPlanId: string | null;
@@ -57,9 +60,21 @@ export function CreditsPage({
           <p className="t-display tabular-nums" data-testid="balance">
             {formatCredits(balance)} credits
           </p>
-          <p className="t-body text-muted">
-            Enough for {Math.floor(balance / imageCostTenths)} images or {Math.floor(balance / videoCostTenths)} camera moves. Free images are also limited to {perVisitorImages} a day per visitor, because this deployment shares one free allowance.
-          </p>
+          <ul className="t-body flex flex-col gap-1 text-muted" data-testid="your-limits">
+            <li>
+              Enough for {Math.floor(balance / imageCostTenths)} images at {formatCredits(imageCostTenths)} credits each. You can make up to <span className="font-semibold text-ink">{limits.imagesPerDay} a day</span>
+              {account.kind === "signed-out" ? "" : ` (${limits.imagesLeftToday} left today)`}, from the {limits.siteImagesPerDay} this deployment shares.
+            </li>
+            <li>
+              Camera moves: <span className="font-semibold text-ink">{plural(limits.liveRenders, "live render")}</span>
+              {account.kind === "signed-out"
+                ? ` in a guest session (${limits.liveRendersWithAccount} with an account)`
+                : account.kind === "guest"
+                  ? ` in a guest session (${limits.liveRendersLeft} left; ${limits.liveRendersWithAccount} with an account)`
+                  : ` (${limits.liveRendersLeft} left)`}{" "}
+              at {formatCredits(videoCostTenths)} credits each. After that, pre-rendered examples, free.
+            </li>
+          </ul>
           <Link href={`${ROUTES.log}?view=list`} className="t-meta inline-block self-start py-2 underline underline-offset-2 hover:text-ink">
             See every credit in and out, in your log
           </Link>
@@ -101,6 +116,9 @@ export function CreditsPage({
             <h2 id="plans-heading" className="t-title">
               Plans
             </h2>
+            <p className="t-meta mt-1 max-w-xl">
+              A plan adds credits and raises how many images you can make a day. Every plan shares the same {limits.siteImagesPerDay} images a day this deployment gets, and the same live camera moves: rendering is server time, which paying doesn&apos;t add.
+            </p>
             <p className="t-meta mt-1 max-w-xl">Payments aren&apos;t part of this build. Checkout is a labelled demo with a test card: it adds the plan&apos;s credits once, and no money moves.</p>
           </div>
           <Segmented
@@ -134,10 +152,13 @@ export function CreditsPage({
                   <span className="t-meta"> a month{annual ? ", billed yearly" : ""}</span>
                   {annual && p.priceMonthlyCents > p.priceAnnualCents && <span className="t-meta block">{dollars(p.priceMonthlyCents).replace(".00", "")} a month if billed monthly</span>}
                 </p>
-                <div className="t-body">
+                <div className="t-body flex flex-col gap-1" data-testid={`plan-${p.id}-limits`}>
                   <p className="font-semibold">{formatCredits(p.monthlyCreditsTenths)} credits a month</p>
                   <p className="t-meta">
-                    Enough for {p.imageCount} images or {p.videoCount} camera moves.
+                    Enough for {p.imageCount} images at {formatCredits(p.imageCostTenths)} credits each, <span className="font-semibold text-ink">up to {p.imagesPerDay} a day</span>.
+                  </p>
+                  <p className="t-meta">
+                    {plural(p.liveRenders, "live camera move")} per account ({p.liveRendersAsGuest} in a guest session) at {formatCredits(p.videoCostTenths)} credits each, then pre-rendered examples, free.
                   </p>
                 </div>
                 <Button variant={current ? "secondary" : "primary"} disabled={current} className="mt-auto" onClick={() => setChosen(p)}>

@@ -18,7 +18,7 @@ Docket makes an image from your prompt with FLUX.1 [schnell], then renders a rea
 1. **Open the site, describe an image, press Make the image.**
    - There's no signup wall: the first press starts a guest session with 100 credits.
    - The run lands on `/make`, at the top of your log, with what it cost.
-   - Free images are shared and counted in the open. The box says how many are left today (57 a day for the whole deployment, 5 per visitor; see [Limits](#limits-compute-and-image-quota)).
+   - Free images are shared and counted in the open. The box says how many are left today (57 a day for the whole deployment; 5 a day on the free plan, more on a paid one; see [Limits](#limits-compute-and-image-quota)).
    - If today's images are used up, go straight to step 2: camera moves don't use them.
 2. **Press Move the camera over this** (or, on home, **Move the camera over a library image**), choose a move, and press **Render the move**.
    - The finished take opens under a drag handle: drag it, or use the arrow keys, to compare the still with the move.
@@ -103,6 +103,7 @@ Building it exposed a data question. A pre-rendered example was rendered over a 
 | **My tell-check missed two things** | The wireframes still had all-caps labels, and a mono face for small labels is itself a tell | Sentence case throughout. Public Sans's tabular figures measured a **0.00px** spread across digits, so the monospaced face was dropped entirely. |
 | **A new visitor's empty log is an invitation** | A blank page is a dead end | First visit: one line saying what the log will hold, the make box, and the public log beneath it. |
 | **Stay on the free tier, cap each visitor at 5 images a day, and show the real count** | So no one drains the day for everyone, "since showing the real numbers is the whole point of Docket" | See [Limits](#limits-compute-and-image-quota). `/make` and home show "N free images left today on this deployment, of 57". |
+| **Plan cards and starter copy must tell the truth about limits; let paid plans raise the daily image cap, not live renders** | "In a product built on honest numbers, this is the worst contradiction in the app" | Each plan's images-a-day is a database column that both the cap and the cards read; every card and the starter state the daily images and the live-move cap beside the credits; a verify script keeps them from drifting. |
 | **Switch over before the README** | Anyone opening the live link was still landing on the clone, "which is exactly what 8x said they no longer want. That's the biggest risk in the project." | Docket became `/`, the clone was deleted, every old URL redirects, and the readiness check was re-run against production. |
 
 ### The one memorable thing
@@ -232,8 +233,9 @@ Measured CPU-seconds per 720p, 5-second render (local, user+sys; `scripts/dev/me
 - **The measurement agrees:** storage holds exactly 58 generations from the day the allocation first ran out, before the first refusal.
 - **How it's shared:**
   - **Site-wide:** `image_usage` counts real provider calls per UTC day, with `CHECK (calls BETWEEN 0 AND 57)`. Every call reserves first. If Cloudflare says the allocation is gone before our count does, the day is marked used up.
-  - **Per visitor:** 5 images a day per account.
-  - **Per network:** 20 images a day per IP address, stored only as a keyed hash. This stops new guest sessions from getting around the per-visitor cap, while a few reviewers in one office can still each make theirs.
+  - **Per visitor, by plan:** 5 images a day on the free plan; a paid plan raises it (Basic 10, Pro 15, Max 20), always within the shared 57. The number lives in one place, `plans.images_per_day`: the cap enforces it, and every plan card, the starter copy and the make box read it. `scripts/verify-limits.ts` checks, plan by plan, that the card's number is the one the server refuses at, and that no limit is typed into the UI as a literal.
+  - **Per network:** the highest plan cap (20) per IP address, stored only as a keyed hash. This stops new guest sessions from getting around the free cap, while someone alone on their network always gets their plan's full cap.
+  - **Live camera moves don't grow with a plan:** 1 in a guest session, 3 per account, on every plan. Rendering is server CPU, which paying doesn't add. Every plan card says so beside the credits.
   - All of it is checked before anything is charged, so a refused request costs nothing and says when the limit resets.
 - **Shown, not hidden:** the make box reads "12 free images left today on this deployment, of 57. You can make 5 more". When they run out, it says so and points you to camera moves, which don't use the allowance.
 - **Tests never spend it.** An earlier round of UI tests used up a whole day's allocation, including production's share. Now `IMAGE_PROVIDER=fixture` (honoured only off Vercel) swaps in a test double that returns a library image, and records its runs as fixtures.
@@ -254,7 +256,7 @@ The money-like parts are enforced by the database, not by application convention
 - **The 1,500-upload cap.** Vercel Blob on Hobby includes 2,000 uploads a month and locks the store for 30 days past that.
   - Every upload first increments `blob_usage`, which has `CHECK (puts BETWEEN 0 AND 1500)`.
   - All storage access goes through one module, and ESLint forbids importing the storage SDK anywhere else.
-- **57 images a day.** The `image_usage` counter's `CHECK` makes the free allocation's ceiling a database guarantee, not a hope.
+- **57 images a day.** The `image_usage` counter's `CHECK` makes the free allocation's ceiling a database guarantee, not a hope, and `plans.images_per_day` has a `CHECK` that no plan can promise more than it.
 - **Plan credits once per plan.** Grants happen under a `SELECT … FOR UPDATE` on the user row and check for an earlier grant for that plan. Pro → Basic → Pro can't mint credits, even with the promo code or concurrent submits.
 
 ---
@@ -273,6 +275,8 @@ The money-like parts are enforced by the database, not by application convention
 **In the redesign:**
 - **The image stand-in.** It was labelled, but it still returned an image the model didn't make for your prompt, which is exactly what the new brief ruled out. It's gone.
 - **My tests spent the shared image quota.** A day of UI test runs used up the free allocation that production shares. Tests now use the fixture provider only.
+- **The plan cards promised what the limits made impossible.** Pro said "300 images or 20 camera moves" while images were capped at 5 a day on every plan and live renders at 3 per account; the starter said "50 images or 3 camera moves" to a guest who could make 5 images that day and 1 live render. Found by testing the live site cold. Paid plans now raise the daily image cap, the cards state every limit beside the credits, the camera-move outcome is gone (credits can't buy moves beyond the live cap), and a verify script ties the copy to the enforced values.
+- **A 10-second database connect timeout was too tight.** Measured connects from a laptop on a bad day took 5 to 20 seconds, and a Neon cold start takes several; slow but healthy connections became errors. It's 30 seconds.
 - **The first capacity estimate was 3× too high.** Reading Cloudflare's price sheet as a flat per-step charge gave about 173 images a day. The measured 58 showed the step charge applies per tile, which gives 57.
 - **A private run's permanent link returned HTTP 200 twice.** Nothing leaked, since the page said "not found", but a loading skeleton let the response start streaming before the 404 could be set. It happened first under `/log`, then again when home moved to `/`. Both pages now keep their loading states in their own route groups.
 - **The public log API revealed publishers' balances.** The permalink page hid a run's "balance after" from strangers, but `/api/log?scope=public` didn't. Only the owner's copy of a run carries it now, and a verify script asserts it.
@@ -360,11 +364,12 @@ Seed content:
 
 These run against the real database and storage, clean up after themselves, and never spend the image quota.
 
-- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log}.ts` (113 checks)
+- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log,limits}.ts` (126 checks)
   - races and exactly-once refunds
   - the daily allowance
   - the render policy and kill switch
   - the plan and promo guards
+  - that every stated limit is the enforced one
   - the log's privacy rules
 - **UI:** start the app with `IMAGE_PROVIDER=fixture npx next start -p 3100`, then run `node scripts/dev/ui-{make,log,home,credits}-e2e.mjs http://localhost:3100 [screenshotDir] [--mobile]`. It's headless Chrome as a stranger, at 390px and 1440px.
 - **Design system:** `node scripts/dev/design-system-check.mjs <baseUrl> [dir] [--mobile]` checks `/style` for contrast, focus, tap targets, reduced motion and the handle's keyboard control.

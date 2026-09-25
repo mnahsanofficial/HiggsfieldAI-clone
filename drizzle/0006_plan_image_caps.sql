@@ -1,0 +1,2 @@
+ALTER TABLE "plans" ADD COLUMN "images_per_day" smallint DEFAULT 5 NOT NULL;--> statement-breakpoint
+ALTER TABLE "plans" ADD CONSTRAINT "plans_images_per_day_range" CHECK ("plans"."images_per_day" BETWEEN 1 AND 57);

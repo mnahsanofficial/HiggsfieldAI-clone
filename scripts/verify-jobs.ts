@@ -204,7 +204,7 @@ async function main() {
     } catch (e) {
       fifthDone = e;
     }
-    check("per visitor: the 6th image is refused, saying when it resets", fifthDone instanceof quota.DailyLimitError && /made your 5 free images/.test((fifthDone as Error).message) && /00:00 UTC/.test((fifthDone as Error).message));
+    check("per visitor: the 6th image is refused, saying when it resets", fifthDone instanceof quota.DailyLimitError && /made your 5 images for today/.test((fifthDone as Error).message) && /00:00 UTC/.test((fifthDone as Error).message));
     check("refused submits charged nothing (only the 5 accepted images)", (await balance(v)) === vb - 5 * 20, `${vb} -> ${await balance(v)}`);
     const q = await quota.imageQuota(v, null);
     check("quota read model: 0 left for this visitor", q.yoursLeft === 0 && q.perVisitor === 5);

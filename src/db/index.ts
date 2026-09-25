@@ -16,9 +16,11 @@ function createPool() {
   const pool = new Pool({
     connectionString: connectionString.replace("sslmode=require", "sslmode=verify-full"),
     max: 5,
-    // Drop idle connections before the database side does, and don't hang on a dead network.
+    // Drop idle connections before the database side does, and don't hang forever on a dead
+    // network. The connect timeout allows for a Neon cold start and a slow link (measured
+    // 5-20 s from a laptop on a bad day); 10 s turned slow-but-healthy connections into errors.
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000,
+    connectionTimeoutMillis: 30_000,
   });
   // An idle client whose connection drops (Neon restarts it, the network blips) emits 'error' on
   // the pool. With no listener that's an uncaught exception that takes the whole process down;
