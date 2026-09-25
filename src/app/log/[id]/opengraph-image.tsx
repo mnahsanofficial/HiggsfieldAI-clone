@@ -3,6 +3,7 @@ import { formatCredits } from "@/lib/credits/format";
 import { frameDataUri, OG_SIZE, shareCard } from "@/lib/og/card";
 import { getLogEntry } from "@/lib/log/entries";
 import { truncateWords } from "@/lib/text";
+import { runTitle } from "@/lib/log/titles";
 
 export const size = OG_SIZE;
 export const contentType = "image/png";
@@ -19,7 +20,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const take = e.assets.find((a) => a.kind === "video");
   const image = e.assets.find((a) => a.kind === "image");
   const frames = [await frameDataUri(take ? take.posterUrl : image?.url)];
-  const title = truncateWords(take ? (e.presetName ?? "Camera move") : e.prompt, 70);
+  const title = truncateWords(runTitle(e), 70);
   const lines =
     e.type === "library"
       ? [`Made with ${e.modelName} for Docket's public library.`]

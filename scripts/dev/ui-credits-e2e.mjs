@@ -37,7 +37,10 @@ try {
   const mine = await text(page, '[data-testid="your-limits"]');
   check("the starter states its limits next to the outcome: 5 images a day, 1 live move as a guest", mine.includes("Enough for 50 images at 2 credits each") && mine.includes("up to 5 a day") && mine.includes("1 live render in a guest session (3 with an account)"), mine.replace(/\s+/g, " "));
   const cardLimits = await page.$$eval('[data-testid^="plan-"][data-testid$="-limits"]', (els) => els.map((e) => e.innerText.replace(/\s+/g, " ")));
-  check("every plan card states its daily images and the live-move cap beside the credits", cardLimits.length === 3 && ["up to 10 a day", "up to 15 a day", "up to 20 a day"].every((t, i) => cardLimits[i].includes(t)) && cardLimits.every((c) => c.includes("3 live camera moves per account (1 in a guest session)")), cardLimits.join(" | "));
+  check("every plan card states its daily images beside the credits", cardLimits.length === 3 && [/up to 10 a day/i, /up to 15 a day/i, /up to 20 images a day/i].every((t, i) => t.test(cardLimits[i])), cardLimits.join(" | "));
+  check("Max says its daily cap, not its credits, sets the month: up to 600, not 900", /up to 600 in a 30-day month/.test(cardLimits[2]) && !cardLimits[2].includes("900 images"), cardLimits[2]);
+  const shared = await page.$eval('[data-testid="plans-moves"]', (e) => e.innerText).catch(() => "");
+  check("the live-move cap is one line above the cards, not repeated on each", shared.includes("On every plan: 3 live camera moves per account (1 in a guest session)") && cardLimits.every((c) => !c.includes("live camera move")), shared);
   check("payments are named as a demo before anything is chosen", start.includes("Checkout is a labelled demo with a test card"));
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
   await shot(page, "1-credits");

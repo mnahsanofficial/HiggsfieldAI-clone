@@ -105,6 +105,8 @@ try {
   check("the strip shows real output: no pre-rendered examples", !stripText.includes("Pre-rendered example") && /Rendered live/.test(stripText), stripText.replace(/\s+/g, " ").slice(0, 160));
   check("the strip links to the whole public log", (await page.$$eval('[data-testid="public-strip"] a', (as) => as.some((a) => a.getAttribute("href") === "/log?scope=public" && a.textContent.trim() === "See all of it"))));
   check("nothing sells: no testimonials, stats or eyebrow labels", !/testimonial|trusted by|\d+\+|★/i.test(await inner(page, "main")));
+  const footer = await page.$$eval("footer a, footer span", (els) => els.map((e) => `${e.textContent.trim()}${e.getAttribute("href") ? ` → ${e.getAttribute("href")}` : ""}`));
+  check("a quiet footer: the source, how it was built, and who built it", footer.includes("Source on GitHub → https://github.com/mnahsanofficial/docket-nahsan") && footer.includes("How it was built → https://github.com/mnahsanofficial/docket-nahsan#how-it-was-built") && footer.includes("Built by Nazmul Ahsan"), footer.join(" | "));
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
   await shot(page, "1-home", true);
 

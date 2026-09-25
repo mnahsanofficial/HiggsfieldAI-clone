@@ -10,7 +10,8 @@ import { Tag } from "@/components/ui/tag";
 import { formatCredits } from "@/lib/credits/format";
 import type { LogAsset, LogEntry } from "@/lib/log/entries";
 import { ROUTES } from "../routes";
-import { LocalTime } from "./local-time";
+import { RunTime } from "./run-time";
+import { runTitle } from "@/lib/log/titles";
 
 // One run in the log. The media leads and is the largest thing; the receipt (model, cost,
 // timing) is a quiet line beneath it. A camera move shows the still and the take under the
@@ -63,7 +64,7 @@ export function Entry({
   const took = seconds(e);
   const plural = !video && ((e.params?.batchSize as number | undefined) ?? 1) > 1;
   const making = video ? "Rendering the move" : plural ? "Making the images" : "Making the image";
-  const title = video ? (e.presetName ?? "Camera move") : e.prompt;
+  const title = runTitle(e);
 
   return (
     <article className={`flex flex-col gap-3 ${isNew ? "entry-new" : ""}`} aria-busy={running || undefined} data-entry={e.id}>
@@ -118,7 +119,7 @@ export function Entry({
           {aspect && <span>{aspect}</span>}
           {video && typeof e.params?.durationS === "number" && <span>{`${e.params.durationS} s, ${e.params.resolution as string}`}</span>}
           {took && <span>{`took ${took}`}</span>}
-          <LocalTime iso={e.createdAt} withDate />
+          <RunTime iso={e.createdAt} withDate />
         </p>
         {e.servedAs === "prerendered" && (
           <div className="mt-1 flex flex-col items-start gap-1.5">

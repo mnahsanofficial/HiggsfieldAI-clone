@@ -38,3 +38,7 @@ export type VisitorLimits = { imagesPerDay: number; liveRenders: number; siteIma
 export async function limitsFor(user: { id: string; kind: "guest" | "registered" } | null): Promise<VisitorLimits> {
   return { imagesPerDay: await imagesPerDayFor(user?.id ?? null), liveRenders: liveRendersFor(user?.kind ?? null), siteImagesPerDay: IMAGE_CALLS_PER_DAY };
 }
+
+// A month, for turning a daily cap into what a plan can reach: a plan's image count is never
+// more than its daily cap across this many days.
+export const DAYS_IN_A_MONTH = 30;

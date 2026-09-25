@@ -10,6 +10,7 @@ import type { LogEntry } from "@/lib/log/entries";
 import { truncateWords } from "@/lib/text";
 import { ImageAllowance } from "../make/composer";
 import { ROUTES } from "../routes";
+import { runTitle } from "@/lib/log/titles";
 
 // Home explains; /make makes; /log remembers. Top to bottom: what Docket is and who it's for,
 // the one way in (above the fold at 390 and 1440), the real still-and-move pair, how it works (each step a real artifact from one published run),
@@ -202,7 +203,7 @@ function StripItem({ entry: e }: { entry: LogEntry }) {
   const take = e.assets.find((a) => a.kind === "video");
   const img = e.assets.find((a) => a.kind === "image");
   const src = take ? take.posterUrl : img?.url;
-  const title = e.vertical === "video" ? (e.presetName ?? "Camera move") : e.prompt;
+  const title = runTitle(e);
   return (
     <li>
       <Link href={ROUTES.entry(e.id)} className="group flex flex-col gap-2 rounded-xl">

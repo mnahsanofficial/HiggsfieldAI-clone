@@ -4,6 +4,7 @@ import { RunRecord } from "@/components/docket/log/record";
 import { getCurrentUser } from "@/lib/auth/current-user";
 import { getLogEntry } from "@/lib/log/entries";
 import { truncateWords } from "@/lib/text";
+import { runTitle } from "@/lib/log/titles";
 
 // A run's permanent link. The owner always sees it; anyone else, signed in or not, only if it
 // was published (or it's a library item). Otherwise it's a plain 404, which doesn't reveal
@@ -14,7 +15,7 @@ export async function generateMetadata({ params }: PageProps<"/log/[id]">): Prom
   const e = await getLogEntry(id, user?.id ?? null);
   if (!e) return { title: "Not found", robots: { index: false } };
   const video = e.vertical === "video";
-  const title = truncateWords(video ? (e.presetName ?? "Camera move") : e.prompt, 60);
+  const title = truncateWords(runTitle(e), 60);
   const description =
     e.type === "library"
       ? `An image made with ${e.modelName} for Docket's public library.`

@@ -104,6 +104,11 @@ export function Composer(p: ComposerProps) {
               options={Array.from({ length: p.image.maxBatch }, (_, i) => ({ value: String(i + 1), label: String(i + 1), disabled: i + 1 > Math.max(1, allowance) }))}
             />
           )}
+          {p.image.maxBatch > 1 && allowance > 0 && allowance < p.image.maxBatch && (
+            <p className="t-meta -mt-2" data-testid="batch-limit">
+              You can make {allowance} more {allowance === 1 ? "image" : "images"} today, so {allowance === 1 ? "only 1 is" : `up to ${allowance} are`} available.
+            </p>
+          )}
         </>
       ) : (
         <>

@@ -69,6 +69,18 @@ async function main() {
       check(`${p.name}: image ${p.imagesPerDay} is allowed, image ${p.imagesPerDay + 1} is refused`, before && !(await allowed(u)));
     }
 
+    // Every plan's stated outcome is reachable inside its own limits: no more images than its
+    // credits buy, and no more than its daily cap allows across a month. And it isn't understated.
+    for (const c of cards) {
+      const byCredits = Math.floor(c.monthlyCreditsTenths / c.imageCostTenths);
+      const byCap = c.imagesPerDay * c.daysInMonth;
+      check(
+        `${c.name}: its ${c.imageCount} images a month are reachable within its credits (${byCredits}) and its daily cap (${c.imagesPerDay} × ${c.daysInMonth} = ${byCap})`,
+        c.imageCount <= byCredits && c.imageCount <= byCap && c.imageCount === Math.min(byCredits, byCap) && c.imageLimit === (byCap < byCredits ? "daily cap" : "credits"),
+        `${c.imageCount}, limited by ${c.imageLimit}`,
+      );
+    }
+
     const g = await newUser("guest");
     const free = planRows.find((p) => p.id === "free")!;
     check("a guest and a signed-out visitor get the free plan's cap", (await quota.imageQuota(g, null)).perVisitor === free.imagesPerDay && (await quota.imageQuota(null, null)).perVisitor === free.imagesPerDay);
