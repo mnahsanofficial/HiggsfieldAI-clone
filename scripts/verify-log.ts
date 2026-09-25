@@ -125,8 +125,13 @@ async function main() {
     const pub = await log.listPublicLog(null, { limit: 12 });
     const runs = pub.filter((e) => e.type === "run");
     check("public log: published runs first, then the seed library, labelled as library entries", pub.length === 12 && pub.slice(runs.length).every((e) => e.type === "library" && e.settlement === "free" && e.assets.length === 1) && runs.every((e) => e.published), `${runs.length} runs, ${pub.length - runs.length} library`);
-    check("published camera moves in the public log are labelled pre-rendered examples", runs.filter((e) => e.vertical === "video").every((e) => e.servedAs === "prerendered" && e.renderedFrom !== null && e.balanceAfterTenths === null));
+    check("published camera moves say how they were served: live and charged, or a pre-rendered example and free; never the publisher's balance", runs.filter((e) => e.vertical === "video").every((e) => e.renderedFrom !== null && e.balanceAfterTenths === null && ((e.servedAs === "live" && e.settlement === "charged") || (e.servedAs === "prerendered" && e.settlement === "free"))));
     check("every public entry carries a real model name and real media", pub.every((e) => e.modelName.length > 0 && e.assets[0]?.url.startsWith("/media/")));
+
+    // 5a. Live renders lead the published runs, ahead of pre-rendered examples.
+    const served = (await log.listPublicLog(null, { limit: 50 })).filter((e) => e.type === "run" && e.vertical === "video").map((e) => e.servedAs);
+    const firstExample = served.indexOf("prerendered");
+    check("the public log leads with live renders, then pre-rendered examples", served.includes("live") && (firstExample === -1 || served.slice(firstExample).every((x) => x !== "live")), served.join(","));
 
     // 5b. The public log page reads to the end in a stable order: no repeats, runs first.
     const seenIds: string[] = [];

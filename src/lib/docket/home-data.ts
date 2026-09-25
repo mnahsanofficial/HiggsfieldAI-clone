@@ -14,7 +14,7 @@ const PROVIDER: Record<string, string> = { cloudflare: "Cloudflare Workers AI" }
 
 export type HomeData = {
   pair: HomePair | null;
-  // One real published camera-move run, shown as the three steps: its still, its move, its receipt.
+  // One real published camera-move run, rendered live and charged, shown as the three steps.
   example: LogEntry | null;
   // A few more public entries, for the strip at the bottom.
   strip: LogEntry[];
@@ -29,23 +29,30 @@ export type HomeData = {
 // Everything home says, read from the database and the values the server enforces, so no
 // number on the page is typed into it.
 export async function homeData(user: { id: string; kind: "guest" | "registered" } | null, ipHash: string | null): Promise<HomeData> {
-  const [[image], [move], moveCount, publicEntries, quota, pair] = await Promise.all([
+  const [[image], [move], movePresets, publicEntries, quota, pair] = await Promise.all([
     db.select().from(models).where(and(eq(models.id, "flux_1_schnell"), eq(models.active, true))),
     db.select().from(models).where(and(eq(models.id, "camera_motion"), eq(models.active, true))),
-    db.$count(presets),
+    db.select({ id: presets.id, motion: presets.motion }).from(presets),
     listPublicLog(user?.id ?? null, { limit: 12 }),
     imageQuota(user?.id ?? null, ipHash),
     homePair(),
   ]);
-  const moves = publicEntries.filter((e) => e.type === "run" && e.vertical === "video" && e.renderedFrom && e.assets.some((a) => a.kind === "video"));
-  const example = moves.length ? moves[Math.floor(Math.random() * moves.length)] : null;
+  // The example is a run rendered live and really charged, with a move you can see at a glance
+  // (a push, pull, pan or tilt), never a pre-rendered stand-in.
+  const obvious = new Set(movePresets.filter((p) => ["push", "pull", "pan", "tilt"].includes(p.motion.type)).map((p) => p.id));
+  const live = publicEntries.filter((e) => e.type === "run" && e.vertical === "video" && e.servedAs === "live" && e.settlement === "charged" && e.renderedFrom && e.assets.some((a) => a.kind === "video"));
+  const candidates = live.filter((e) => e.presetId && obvious.has(e.presetId));
+  const example = candidates.length ? candidates[Math.floor(Math.random() * candidates.length)] : null;
+  // The strip shows real output: the other live runs, then library images. Pre-rendered
+  // examples stay in the public log, labelled, but don't stand in for the product here.
+  const strip = [...live.filter((e) => e.id !== example?.id), ...publicEntries.filter((e) => e.type === "library")].slice(0, 4);
   const resolution = move.capabilities.resolutions[0];
   const seconds = move.capabilities.durations?.[0] ?? 5;
   return {
     pair,
     example,
-    strip: publicEntries.filter((e) => e.id !== example?.id).slice(0, 4),
-    moveCount,
+    strip,
+    moveCount: movePresets.length,
     image: { name: image.name, provider: PROVIDER[image.providerKey] ?? image.providerKey, costTenths: priceJob(image.pricing, { resolution: image.capabilities.resolutions[0], batchSize: 1 }).costTenths },
     move: { name: move.name, costTenths: priceJob(move.pricing, { resolution, batchSize: 1, durationS: seconds }).costTenths, seconds, resolution },
     starterTenths: STARTER_CREDITS_TENTHS,

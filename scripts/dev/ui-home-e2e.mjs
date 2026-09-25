@@ -59,6 +59,10 @@ try {
   check("how it works: three steps, in order", steps.map((s) => s.h).join(" | ") === "1. Make an image | 2. Choose a camera move | 3. Every run stays on the record", steps.map((s) => s.h).join(" | "));
   check("step 1 is a real generated still, with its prompt", steps[0]?.img.startsWith("/media/") && /“.+”/.test(steps[0]?.text ?? ""));
   check("step 2 is a real camera move", steps[1]?.video.startsWith("/media/") && steps[1]?.text.includes(`one of the ${moveCount}`));
+  const v2 = await page.$eval('[data-testid="how-it-works"] ol > li:nth-child(2) video', (v) => ({ autoplay: v.autoplay, muted: v.muted, loop: v.loop, inline: v.playsInline, controls: v.controls, label: v.getAttribute("aria-label") }));
+  check("step 2 plays by itself: autoplay, muted, loop, inline, no native controls", v2.autoplay && v2.muted && v2.loop && v2.inline && !v2.controls, JSON.stringify(v2));
+  check("step 2 is a live render with obvious motion (not rack focus, arc or handheld)", /rendered live/.test(v2.label) && !/rack focus|arc|handheld/i.test(v2.label), v2.label);
+  check("step 3's receipt has a real charge, not '0 free'", /Cost\s+−\d+\s*charged/.test(steps[2]?.text ?? "") && !/0\s*free/.test(steps[2]?.text ?? ""), (steps[2]?.text.match(/Cost[^\n]*\n?[^\n]*/) ?? [""])[0].replace(/\s+/g, " "));
   check("step 3 is that run's receipt line: model, cost, refund, and a link to its record", /Model\s+Camera motion/.test(steps[2]?.text ?? "") && /Cost/.test(steps[2]?.text ?? "") && /Refund/.test(steps[2]?.text ?? "") && UUID.test(steps[2]?.record ?? ""), steps[2]?.text.replace(/\s+/g, " "));
   const recordRes = await fetch(`${base}${steps[2]?.record}`);
   const recordHtml = await recordRes.text();
@@ -88,10 +92,19 @@ try {
   // 7. The public log is a short strip, with a way to all of it.
   const strip = await page.$$eval('[data-testid="public-strip"] li a', (as) => as.map((a) => a.getAttribute("href")));
   check("the public log is a short strip of about four entries, each a permalink", strip.length === 4 && strip.every((h) => UUID.test(h)), `${strip.length}`);
+  const stripText = await inner(page, '[data-testid="public-strip"]');
+  check("the strip shows real output: no pre-rendered examples", !stripText.includes("Pre-rendered example") && /Rendered live/.test(stripText), stripText.replace(/\s+/g, " ").slice(0, 160));
   check("the strip links to the whole public log", (await page.$$eval('[data-testid="public-strip"] a', (as) => as.some((a) => a.getAttribute("href") === "/log?scope=public" && a.textContent.trim() === "See all of it"))));
   check("nothing sells: no testimonials, stats or eyebrow labels", !/testimonial|trusted by|\d+\+|★/i.test(await inner(page, "main")));
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
   await shot(page, "1-home", true);
+
+  // Reduced motion: step 2 holds on its poster and offers a play button instead.
+  await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "reduce" }]);
+  await page.reload({ waitUntil: "networkidle0" });
+  const still2 = await page.$eval('[data-testid="how-it-works"] ol > li:nth-child(2)', (li) => ({ autoplay: li.querySelector("video")?.autoplay, paused: li.querySelector("video")?.paused, play: [...li.querySelectorAll("button")].map((b) => b.textContent.trim()) }));
+  check("with reduced motion, step 2 doesn't move on its own and offers 'Play the move'", still2.autoplay === false && still2.paused === true && still2.play.includes("Play the move"), JSON.stringify(still2));
+  await page.emulateMediaFeatures([{ name: "prefers-reduced-motion", value: "no-preference" }]);
 
   // 8. The public log page: everything, paged without repeats.
   await page.goto(`${base}/log?scope=public`, { waitUntil: "networkidle0" });
