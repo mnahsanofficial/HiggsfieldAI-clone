@@ -24,8 +24,8 @@ if (shotDir) mkdirSync(shotDir, { recursive: true });
 const shot = async (page, name) => shotDir && page.screenshot({ path: `${shotDir}/${name}-${tag}.png` });
 const clickText = (page, sel, t) => page.evaluate((s, x) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim().startsWith(x)); if (!el) throw new Error(`no ${s} "${x}"`); el.scrollIntoView({ block: "center" }); el.click(); }, sel, t);
 const clickExact = (page, sel, t) => page.evaluate((s, x) => { const el = [...document.querySelectorAll(s)].find((e) => e.textContent.trim() === x); if (!el) throw new Error(`no ${s} "${x}"`); el.click(); }, sel, t);
-// The balance chip (the nav's "Credits" link shares its href).
-const balance = (page) => page.evaluate(() => [...document.querySelectorAll("header a")].map((a) => a.textContent.trim()).find((t) => /^[\d.,]+ credits/.test(t))?.replace(/ credits.*/, "") ?? "none");
+// The balance, on the account menu button.
+const balance = (page) => page.evaluate(() => [...document.querySelectorAll("header a, header button")].map((a) => a.textContent.trim()).find((t) => /^[\d.,]+ credits/.test(t))?.replace(/ credits.*/, "") ?? "none");
 const firstEntry = (page) => page.$eval("[data-entry]", (e) => e.innerText).catch(() => "");
 const overflow = (page) => page.evaluate(() => document.documentElement.scrollWidth - innerWidth);
 
@@ -54,7 +54,7 @@ try {
   // 2. Make an image: guest session, the commit, a pending entry, then a real image.
   const prompt = `a paper lantern floating over a flooded rice field at blue hour ${Date.now()}`;
   await page.type("#prompt", prompt);
-  await clickText(page, "form button[type=submit]", "Make the image");
+  await clickText(page, "main form button[type=submit]", "Make the image");
   await page.waitForSelector('[data-state="committing"]', { timeout: 30000 });
   check("the commit: the meter drains", true);
   // Poll rather than sleep: the fixture answers in 1.5s, so a fixed wait can land after it's done.
@@ -65,7 +65,7 @@ try {
   check("a new entry prints into the top of the log, pending, with progress", sawPending, pending.split("\n")[0]);
   await shot(page, "2-pending");
   await page.waitForFunction((p) => [...document.querySelectorAll("[data-entry] img")].some((i) => i.alt === p && i.complete && i.naturalWidth > 0), { timeout: 90000 }, prompt);
-  await page.waitForFunction(() => [...document.querySelectorAll("header a")].some((a) => a.textContent.startsWith("98 credits")), { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => [...document.querySelectorAll("header a, header button")].some((a) => a.textContent.startsWith("98 credits")), { timeout: 15000 }).catch(() => {});
   const done = await firstEntry(page);
   check("a real image lands, with its receipt: model and −2 charged", done.includes("FLUX.1 [schnell]") && done.includes("−2") && done.includes("charged"), done.replace(/\s+/g, " ").slice(0, 120));
   check("header balance 100 -> 98", (await balance(page)) === "98", await balance(page));
@@ -75,10 +75,10 @@ try {
   // 3. The loop: move the camera over that image.
   await clickText(page, "[data-entry] button", "Move the camera over this");
   await page.waitForFunction(() => document.body.innerText.includes("Image to animate"));
-  const handed = await page.$eval("form", (f) => f.innerText);
+  const handed = await page.$eval("main form", (f) => f.innerText);
   check("'Move the camera over this' hands the still to camera-move mode", handed.includes(prompt.slice(0, 30)) && handed.includes("Camera move"));
 
-  await clickText(page, "form button", "General");
+  await clickText(page, "main form button", "General");
   await page.waitForSelector("dialog[open]");
   await page.waitForFunction(() => document.querySelectorAll("dialog[open] ul li").length >= 14);
   const tags = await page.$$eval("dialog[open] li", (li) => li.filter((l) => l.innerText.includes("Pre-rendered only")).length);
@@ -88,10 +88,10 @@ try {
   await shot(page, "4-moves");
   await clickText(page, "dialog[open] li button", "Arc pan left");
   await page.waitForFunction(() => !document.querySelector("dialog[open]"));
-  const btn = await page.$eval("form button[type=submit]", (b) => b.innerText);
-  const costText = await page.$eval("form", (f) => f.innerText);
+  const btn = await page.$eval("main form button[type=submit]", (b) => b.innerText);
+  const costText = await page.$eval("main form", (f) => f.innerText);
   check("a pre-rendered-only move says so before the press, and costs nothing", btn === "Get the example" && costText.includes("Costs nothing") && /pre-rendered example, free/.test(costText), btn);
-  await clickText(page, "form button[type=submit]", "Get the example");
+  await clickText(page, "main form button[type=submit]", "Get the example");
   await page.waitForFunction(() => document.querySelector("[data-entry]")?.innerText.includes("pre-rendered example"), { timeout: 30000 });
   await new Promise((r) => setTimeout(r, 900)); // let the entry finish printing in
   const ex = await firstEntry(page);
@@ -110,11 +110,11 @@ try {
 
   // 4. Optional live render (local only).
   if (process.env.E2E_LIVE === "1") {
-    await clickText(page, "form button", "Arc pan left");
+    await clickText(page, "main form button", "Arc pan left");
     await page.waitForSelector("dialog[open]");
     await clickText(page, "dialog[open] li button", "Slow push-in");
     await page.waitForFunction(() => !document.querySelector("dialog[open]"));
-    await clickText(page, "form button[type=submit]", "Render the move");
+    await clickText(page, "main form button[type=submit]", "Render the move");
     await page.waitForFunction(() => document.querySelector("[data-entry]")?.innerText.includes("Slow push-in") && !document.querySelector("[data-entry]").getAttribute("aria-busy"), { timeout: 120000 });
     const live = await firstEntry(page);
     check("live render: compared against your own still, −30 charged", live.includes("−30") && live.includes("rendered with ffmpeg") && (await page.$eval("[data-entry]", (e) => e.innerText.includes("Still"))), live.replace(/\s+/g, " ").slice(0, 120));
@@ -132,10 +132,10 @@ try {
   execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "10"], { stdio: "ignore" });
   await page.reload({ waitUntil: "load" });
   await page.waitForSelector("#prompt");
-  await clickExact(page, "form label span", "Image");
-  await clickExact(page, "form label span", "4");
-  const short = await page.$eval("form", (f) => f.innerText);
-  check("short on credits: says what it costs and what you have, offers 'Get more credits'", short.includes("This costs 8 credits and you have 1") && short.includes("Get more credits") && !(await page.$("form button[type=submit]")));
+  await clickExact(page, "main form label span", "Image");
+  await clickExact(page, "main form label span", "4");
+  const short = await page.$eval("main form", (f) => f.innerText);
+  check("short on credits: says what it costs and what you have, offers 'Get more credits'", short.includes("This costs 8 credits and you have 1") && short.includes("Get more credits") && !(await page.$("main form button[type=submit]")));
   await shot(page, "8-short");
   execFileSync("npx", ["tsx", "--conditions", "react-server", "scripts/dev/set-balance.ts", userId, "980"], { stdio: "ignore" });
   await page.reload({ waitUntil: "load" });
@@ -148,8 +148,8 @@ try {
     t.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await page.type("#prompt", `four studies of a copper kettle on a windowsill ${Date.now()}`);
-  await clickExact(page, "form label span", "4");
-  await clickText(page, "form button[type=submit]", "Make the images");
+  await clickExact(page, "main form label span", "4");
+  await clickText(page, "main form button[type=submit]", "Make the images");
   await page.waitForFunction(() => [...document.querySelectorAll('[data-entry][aria-busy="true"]')].some((e) => e.innerText.includes("copper kettle")), { timeout: 20000 });
   const running = await firstEntry(page);
   check("a batch says 'Making the images' while it runs", running.startsWith("Making the images"), running.split("\n")[0]);
@@ -162,12 +162,12 @@ try {
 
   // 7. The per-visitor cap: 1 + 4 images today, so no more, and the page says when that resets.
   await page.waitForFunction(() => document.querySelector("[data-quota]")?.innerText.includes("made your 5 images for today"), { timeout: 15000 }).catch(() => {});
-  const capped = await page.$eval("form", (f) => f.innerText);
-  const disabled = await page.$eval("form button[type=submit]", (b) => b.disabled).catch(() => null);
-  check("when capped, no price is drawn for images you can't make", !(await page.$('form [role="img"][aria-label^="This costs"]')));
+  const capped = await page.$eval("main form", (f) => f.innerText);
+  const disabled = await page.$eval("main form button[type=submit]", (b) => b.disabled).catch(() => null);
+  check("when capped, no price is drawn for images you can't make", !(await page.$('main form [role="img"][aria-label^="This costs"]')));
   check("a retry that today's allowance can't run isn't offered", !(await firstEntry(page)).includes("Try again"));
   check("after 5 images: 'You've made your 5 images for today', and Make is disabled", capped.includes("made your 5 images for today") && /00:00 UTC/.test(capped) && disabled === true && !capped.includes("Get more credits"), `${disabled} | ${await page.$eval("[data-quota]", (e) => e.innerText)}`);
-  await page.$eval("form", (f) => f.scrollIntoView({ block: "start" }));
+  await page.$eval("main form", (f) => f.scrollIntoView({ block: "start" }));
   await page.evaluate(() => scrollBy(0, -80));
   await shot(page, "9-capped");
 

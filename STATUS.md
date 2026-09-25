@@ -51,7 +51,7 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 
 ## Last changes before the feature freeze (owner, 2026-09-26)
 1. `feat/home-explains`: home explains (headline + who it's for; real pair; how it works as three real artifacts from one published run; what's real, linked to a real record; free to start from the enforced values; one primary action; a four-entry public strip). The public log page is `/log?scope=public` (`listPublicLogPage`, stable order, offset paging; API `?offset=`). Home e2e rewritten, 24/24 at 390 and 1440; `verify-log` 20/20.
-2. next: `feat/account-menu` (balance button, email or Guest, balance → /credits, your log, sign out; a guest's sign-out confirms first).
+2. `feat/account-menu`: the balance is a menu button (who you are, Balance → /credits, Your log, Sign out). Guests: the menu leads with creating an account; sign-out confirms, saying the runs become unreachable for good. On phones with a session, the nav drops its Credits link (the menu's Balance goes there) so a four-digit balance fits. `ui-menu-e2e` 22/22 at 390 and 1440.
 3. then: readiness on production, README screenshots and What to click first, the Live link, STATUS frozen, walkthrough beat sheet.
 
 ## Where things stand (2026-09-25)
