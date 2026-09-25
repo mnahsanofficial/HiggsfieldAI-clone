@@ -1,0 +1,23 @@
+import { MakePage } from "@/components/docket/make/make-page";
+import { getCurrentUser } from "@/lib/auth/current-user";
+import { getMakeData } from "@/lib/docket/make-data";
+
+export const metadata = { title: "Make" };
+
+// /make?mode=move&still=<assetId>&move=<presetId>&prompt=... so any page can hand off into the
+// loop: "move the camera over this image", or "make this again".
+export default async function Make({ searchParams }: PageProps<"/make">) {
+  const q = await searchParams;
+  const one = (v: string | string[] | undefined) => (typeof v === "string" ? v : null);
+  const data = await getMakeData(await getCurrentUser());
+  const stillId = one(q.still);
+  return (
+    <MakePage
+      data={data}
+      initialMode={one(q.mode) === "move" || stillId ? "move" : "image"}
+      initialStillId={stillId && data.stills.some((s) => s.id === stillId) ? stillId : null}
+      initialMoveId={one(q.move)}
+      initialPrompt={(one(q.prompt) ?? "").slice(0, 2000)}
+    />
+  );
+}

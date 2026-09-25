@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { assets, creditLedger, generationJobs, models, presets, users } from "@/db/schema";
+import type { FallbackReason } from "@/lib/render/policy";
 
 // The log read model: one row per run, joining what the job was, what came out of it, and
 // what the ledger did about it. Docket reads the whole product from this, so a reviewer can
@@ -52,6 +53,10 @@ export type LogEntry = {
   finishedAt: string | null;
   published: boolean;
   mine: boolean;
+  // A camera move is either rendered live for this run or served from the pre-rendered
+  // library (free, and labelled). The reason says why, in the user's terms.
+  servedAs: "live" | "prerendered" | null;
+  fallbackReason: FallbackReason | null;
   // What the user picked to animate (a camera-move run), and the still the take was actually
   // rendered over. They are the same for a live render; for a pre-rendered example the take
   // was rendered over a library still, and the before/after view compares against that one.
@@ -93,6 +98,7 @@ const jobCols = {
   finishedAt: generationJobs.finishedAt,
   publishedAt: generationJobs.publishedAt,
   inputAssetId: generationJobs.inputAssetId,
+  providerState: generationJobs.providerState,
 };
 
 type JobRow = {
@@ -114,6 +120,7 @@ type JobRow = {
   finishedAt: Date | null;
   publishedAt: Date | null;
   inputAssetId: string | null;
+  providerState: Record<string, unknown> | null;
 };
 
 async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntry[]> {
@@ -167,6 +174,8 @@ async function hydrate(jobs: JobRow[], viewerId: string | null): Promise<LogEntr
       finishedAt: j.finishedAt?.toISOString() ?? null,
       published: !!j.publishedAt,
       mine: j.userId === viewerId,
+      servedAs: j.vertical !== "video" ? null : j.providerState?.served === "prerendered" ? "prerendered" : "live",
+      fallbackReason: (j.providerState?.reason as FallbackReason | undefined) ?? null,
       inputAsset: stills.find((a) => a.id === j.inputAssetId) ?? null,
       renderedFrom: stills.find((a) => a.id === outputs.find((o) => o.jobId === j.id && o.kind === "video")?.sourceAssetId) ?? null,
       assets: outputs.filter((a) => a.jobId === j.id).map(({ jobId: _jobId, ...a }) => a),
@@ -240,6 +249,8 @@ export async function listLibraryEntries(limit = 20): Promise<LogEntry[]> {
     finishedAt: a.createdAt.toISOString(),
     published: true,
     mine: false,
+    servedAs: null,
+    fallbackReason: null,
     inputAsset: null,
     renderedFrom: null,
     assets: [{ id: a.id, kind: a.kind, source: a.source, url: a.url, posterUrl: a.posterUrl, width: a.width, height: a.height, durationMs: a.durationMs, aspect: a.aspect, prompt: a.prompt, sourceAssetId: null }],
