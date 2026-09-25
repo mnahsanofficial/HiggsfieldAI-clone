@@ -155,12 +155,12 @@ try {
   await shot(page, "7-canceled");
 
   // 7. The per-visitor cap: 1 + 4 images today, so no more, and the page says when that resets.
-  await page.waitForFunction(() => document.querySelector("[data-quota]")?.innerText.includes("made your 5 free images"), { timeout: 15000 }).catch(() => {});
+  await page.waitForFunction(() => document.querySelector("[data-quota]")?.innerText.includes("made your 5 images for today"), { timeout: 15000 }).catch(() => {});
   const capped = await page.$eval("form", (f) => f.innerText);
   const disabled = await page.$eval("form button[type=submit]", (b) => b.disabled).catch(() => null);
   check("when capped, no price is drawn for images you can't make", !(await page.$('form [role="img"][aria-label^="This costs"]')));
   check("a retry that today's allowance can't run isn't offered", !(await firstEntry(page)).includes("Try again"));
-  check("after 5 images: 'You've made your 5 free images today', and Make is disabled", capped.includes("made your 5 free images today") && /00:00 UTC/.test(capped) && disabled === true && !capped.includes("Get more credits"), `${disabled} | ${await page.$eval("[data-quota]", (e) => e.innerText)}`);
+  check("after 5 images: 'You've made your 5 images for today', and Make is disabled", capped.includes("made your 5 images for today") && /00:00 UTC/.test(capped) && disabled === true && !capped.includes("Get more credits"), `${disabled} | ${await page.$eval("[data-quota]", (e) => e.innerText)}`);
   await page.$eval("form", (f) => f.scrollIntoView({ block: "start" }));
   await page.evaluate(() => scrollBy(0, -80));
   await shot(page, "9-capped");

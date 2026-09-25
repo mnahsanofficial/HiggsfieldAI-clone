@@ -25,6 +25,7 @@ export function HomePage({
   mine,
   publicEntries,
   moveCount,
+  liveRenders,
 }: {
   signedIn: boolean;
   balanceTenths: number;
@@ -33,6 +34,7 @@ export function HomePage({
   mine: LogEntry[];
   publicEntries: LogEntry[];
   moveCount: number;
+  liveRenders: number;
 }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -110,7 +112,11 @@ export function HomePage({
               {error}
             </p>
           )}
-          {!signedIn && <p className="t-meta">No account needed: you start with {formatCredits(balanceTenths)} free credits.</p>}
+          {!signedIn && (
+            <p className="t-meta" data-testid="starter">
+              No account needed: you start with {formatCredits(balanceTenths)} free credits, up to {quota.perVisitor} images a day and {liveRenders} live camera {liveRenders === 1 ? "move" : "moves"}.
+            </p>
+          )}
         </form>
       </section>
 

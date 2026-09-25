@@ -31,7 +31,7 @@ try {
   const home = await text(page);
   if (!(await page.$eval("[data-quota]", (e) => e.innerText)).startsWith("Test mode")) throw new Error("server isn't in fixture mode: refusing to spend the real image allowance");
   check("headline says what Docket is", home.includes("Make an image, then move the camera over it") && home.includes("FLUX.1 [schnell]") && home.includes("14 camera moves") && home.includes("ffmpeg"));
-  check("the make box shows the price against 100 free credits", home.includes("Costs 2") && home.includes("100 free credits"));
+  check("the make box shows the price, and the starter states its limits", home.includes("Costs 2") && (await page.$eval('[data-testid="starter"]', (e) => e.innerText)).includes("100 free credits, up to 5 images a day and 1 live camera move"));
   check("signed out: the public log, library entries, media first", home.includes("The public log") && (await page.$$("[data-entry] img")).length >= 6);
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
   await shot(page, "1-home");

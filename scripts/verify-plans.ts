@@ -24,8 +24,8 @@ async function main() {
   const bal = async (id: string) => (await db.select({ b: S.users.creditBalanceTenths, p: S.users.planId }).from(S.users).where(eq(S.users.id, id)))[0];
   try {
     const plans = await billing.listPlans();
-    check("3 paid plans with outcome translations", plans.length === 3 && plans.every((p) => p.outcomes.length === 2), plans.map((p) => `${p.name}: ${p.outcomes.join(" / ")}`).join(" | "));
-    check("Pro 600 credits = 300 images, ~20 videos", plans.find((p) => p.id === "pro")?.outcomes.join(" ") === "= 300 FLUX.1 [schnell] images ~ 20 camera-move videos (5s, 720p)");
+    check("3 paid plans, each with credits, images and its daily image cap", plans.length === 3 && plans.every((p) => p.imageCount > 0 && p.imagesPerDay > 0), plans.map((p) => `${p.name}: ${p.imageCount} images, ${p.imagesPerDay}/day`).join(" | "));
+    check("Pro: 600 credits = 300 images at 2 credits, up to 15 a day", (() => { const p = plans.find((x) => x.id === "pro"); return p?.imageCount === 300 && p.imageCostTenths === 20 && p.imagesPerDay === 15; })());
 
     const u = await newUser();
     const r1 = await billing.switchPlanDemo(u, "pro");

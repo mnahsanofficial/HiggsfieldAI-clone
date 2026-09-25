@@ -33,7 +33,11 @@ try {
 
   await page.goto(`${base}/credits`, { waitUntil: "networkidle0", timeout: 60000 });
   const start = await text(page);
-  check("signed out: what you start with, and three plans with what their credits buy", start.includes("You start with") && start.includes("100 credits") && (start.match(/credits a month/g) ?? []).length === 3 && start.includes("Enough for 300 images or 20 camera moves"), start.replace(/\s+/g, " ").slice(0, 120));
+  check("signed out: what you start with, and three plans with what their credits buy", start.includes("You start with") && start.includes("100 credits") && (start.match(/credits a month/g) ?? []).length === 3, start.replace(/\s+/g, " ").slice(0, 120));
+  const mine = await text(page, '[data-testid="your-limits"]');
+  check("the starter states its limits next to the outcome: 5 images a day, 1 live move as a guest", mine.includes("Enough for 50 images at 2 credits each") && mine.includes("up to 5 a day") && mine.includes("1 live render in a guest session (3 with an account)"), mine.replace(/\s+/g, " "));
+  const cardLimits = await page.$$eval('[data-testid^="plan-"][data-testid$="-limits"]', (els) => els.map((e) => e.innerText.replace(/\s+/g, " ")));
+  check("every plan card states its daily images and the live-move cap beside the credits", cardLimits.length === 3 && ["up to 10 a day", "up to 15 a day", "up to 20 a day"].every((t, i) => cardLimits[i].includes(t)) && cardLimits.every((c) => c.includes("3 live camera moves per account (1 in a guest session)")), cardLimits.join(" | "));
   check("payments are named as a demo before anything is chosen", start.includes("Checkout is a labelled demo with a test card"));
   check("no horizontal overflow", (await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)) === 0);
   await shot(page, "1-credits");
