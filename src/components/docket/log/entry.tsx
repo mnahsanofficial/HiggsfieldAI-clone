@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { SkeletonImg, SkeletonVideo } from "@/components/media/skeleton-media";
 import { Amount } from "@/components/ui/amount";
@@ -8,6 +9,7 @@ import { Compare } from "@/components/ui/compare";
 import { Tag } from "@/components/ui/tag";
 import { formatCredits } from "@/lib/credits/format";
 import type { LogAsset, LogEntry } from "@/lib/log/entries";
+import { ROUTES } from "../routes";
 import { LocalTime } from "./local-time";
 
 // One run in the log. The media leads and is the largest thing; the receipt (model, cost,
@@ -41,6 +43,7 @@ export function Entry({
   onCancel,
   onRetry,
   footer,
+  showOpen = true,
 }: {
   entry: LogEntry;
   isNew?: boolean;
@@ -49,6 +52,7 @@ export function Entry({
   onCancel?: () => void;
   onRetry?: () => void;
   footer?: ReactNode;
+  showOpen?: boolean;
 }) {
   const running = e.status === "queued" || e.status === "processing";
   const failed = e.status === "failed" || e.status === "canceled";
@@ -131,7 +135,8 @@ export function Entry({
             Cancel
           </Button>
         )}
-        {failed && onRetry && (
+        {/* Retrying can't work until the daily limit resets, so it isn't offered; the message says when. */}
+        {failed && onRetry && e.errorCode !== "quota_exhausted" && e.errorCode !== "not_configured" && (
           <Button size="sm" variant="secondary" onClick={onRetry} pending={busy}>
             Try again{e.costTenths ? `, ${formatCredits(e.costTenths)} credits` : ""}
           </Button>
@@ -145,6 +150,11 @@ export function Entry({
           <a href={(take ?? images[0]).url} download className={buttonClass("secondary", "sm")}>
             Download
           </a>
+        )}
+        {showOpen && !running && (
+          <Link href={ROUTES.entry(e.id)} className={buttonClass("quiet", "sm")}>
+            Open
+          </Link>
         )}
         {footer}
       </div>

@@ -2,12 +2,12 @@
 // credits sit under /next while the old UI still owns / and /credits. Switch-over edits this
 // file and moves two folders, and nothing else.
 // Until a page exists, its route points at the nearest live one, so nothing links to a 404:
-// home and log fall back to /make, credits and sign-in to the old pages. Each later branch
+// home falls back to /make, credits and sign-in to the old pages. Each later branch
 // points its route at the real page as it lands.
 export const ROUTES = {
   home: "/make",
   make: "/make",
-  log: "/make",
+  log: "/log",
   entry: (id: string) => `/log/${id}`,
   credits: "/credits",
   signIn: "/login",

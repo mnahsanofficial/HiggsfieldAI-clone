@@ -22,9 +22,9 @@ design, and make sure nothing reads as mock data. Direction 2 ("the run log") wa
 |---|---|---|
 | 1 | `fix/backend-audit` | done (PR #22) |
 | 2 | `feat/design-system` | done (PR #23) |
-| 3 | `feat/make` create flow (image → camera move) | done |
-| 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | **next** |
-| 5 | home | todo |
+| 3 | `feat/make` create flow (image → camera move) | done (PR #24) |
+| 4 | `feat/log` library and history, `/log/<id>` permalinks, publish | done |
+| 5 | `feat/home` | **next** |
 | 6 | credits, paywall, checkout | todo |
 | 7 | auth screens | todo |
 | 8 | switch-over, old UI removed | todo |
@@ -41,6 +41,16 @@ Owner's changes to the chosen direction, to hold to while building:
 - an empty log is an invitation: one line, the make box, and the public log beneath
 
 Earlier build (the clone) is PRs #1–#21; production has been green throughout.
+
+## ⚠ Image quota (2026-09-25)
+Cloudflare Workers AI free allocation is 10,000 neurons/day, which is **about 40 FLUX.1 schnell images a day at 4 steps (already the minimum), shared by production and local tests**. It ran out at 12:17 UTC on 2026-09-25, mostly spent by e2e runs; production image generation fails honestly (refund + reset time) until 00:00 UTC. **Tests must not spend it**: use `scripts/dev/fixture-run.ts` (marked fixtures, real ledger charge, deleted with the test account). `ui-make-e2e` is the one test that makes real images (about 6); run it sparingly. Raising the limit needs Workers Paid (real money: owner's decision).
+
+## Log (PR #25)
+- `/log` (`app/(docket)/log/(list)`): media view by default, list view (`?view=list`) interleaving runs with credit events and the balance after each; filters; "Show older runs". Signed out it's an invitation plus the public log.
+- `/log/<id>` (`app/(docket)/log/[id]`, `components/docket/log/record.tsx`): owner sees everything including balance after; others only if published (or a library item), else a real **404** with the same text for private and missing. The list page is in its own `(list)` group so its loading boundary doesn't stream the permalink before `notFound()`.
+- Publishing: `PublishControl`, registered only; guests see "Create an account to publish". `DELETE /api/log/<id>` soft-deletes outputs and unpublishes in one transaction.
+- Test helpers: `scripts/dev/test-account.ts create|delete` (registered account + session token, no password typing), `scripts/dev/fixture-run.ts <userId>`.
+- e2e: `node scripts/dev/ui-log-e2e.mjs <base> [dir] [--mobile]` (12 checks, no provider calls).
 
 ## Create flow (PR #24)
 - `/make` (`src/app/(docket)/make`, `components/docket/make/*`, data in `lib/docket/make-data.ts`). `?mode=move&still=<assetId>&move=<presetId>&prompt=` hand off into the loop.
