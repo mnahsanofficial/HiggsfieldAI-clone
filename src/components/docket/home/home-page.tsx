@@ -62,7 +62,7 @@ export function HomePage({ data: d, signedIn, registered, balanceTenths, liveRen
           <li>Camera moves are rendered with ffmpeg over the still, frame by frame. They are not AI video.</li>
           <li>
             Every credit in and out is recorded, with the balance after it.{" "}
-            <Link href={d.example ? ROUTES.entry(d.example.id) : ROUTES.publicLog} className="inline-block py-1 font-medium underline underline-offset-2 hover:text-muted" data-testid="proof-link">
+            <Link href={d.example ? ROUTES.entry(d.example.id) : ROUTES.publicLog} className="inline-block py-2 font-medium underline underline-offset-2 hover:text-muted" data-testid="proof-link">
               See a real run&apos;s record
             </Link>
           </li>
@@ -188,7 +188,7 @@ function Receipt({ entry: e }: { entry: LogEntry }) {
         <dt className="text-muted">Refund</dt>
         <dd>{e.refundedTenths > 0 ? <Amount tenths={e.refundedTenths} as="refunded" /> : e.settlement === "free" ? "None: nothing was charged" : "None"}</dd>
       </dl>
-      <Link href={ROUTES.entry(e.id)} className="t-meta inline-block self-start py-1 underline underline-offset-2 hover:text-ink">
+      <Link href={ROUTES.entry(e.id)} className="t-meta inline-block self-start py-2 underline underline-offset-2 hover:text-ink">
         Open this run&apos;s record
       </Link>
     </div>

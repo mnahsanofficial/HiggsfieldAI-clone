@@ -2,7 +2,8 @@
 // button showing the balance: aria-expanded, arrow keys, Home/End, Escape returns focus, a click
 // outside closes, 32px targets, and it fits at 390px. A guest's menu leads with creating an
 // account, and a guest's sign-out warns before it loses the runs; a registered account signs out
-// at once. Both land on home. Makes nothing; deletes its accounts afterwards.
+// at once (local servers only: the test session is signed with the local secret). Both land
+// on home. Makes nothing; deletes its accounts afterwards.
 // usage: node scripts/dev/ui-menu-e2e.mjs <baseUrl> [screenshotDir] [--mobile]
 import puppeteer from "puppeteer-core";
 import { execFileSync } from "node:child_process";
@@ -102,18 +103,23 @@ try {
   await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.textContent.trim() === "Sign out and lose these runs").click())]);
   check("confirming signs the guest out and goes home", new URL(page.url()).pathname === "/" && !(await sessionCookie(page)) && !(await page.$(BTN)));
 
-  // 3. A registered account signs out at once.
-  const acct = JSON.parse(tsx("scripts/dev/test-account.ts", "create"));
-  cleanup.push(acct.userId);
-  await page.setCookie({ name: "docket_session", value: acct.token, url: base });
-  await page.goto(`${base}/log`, { waitUntil: "networkidle0" });
-  await page.click(BTN);
-  const regItems = await menuItems(page);
-  const regText = await page.$eval(MENU, (m) => m.innerText);
-  check("registered: the menu shows the email, and no create-account prompt", /ui-test-\d+@example\.test/.test(regText) && !regText.includes("Create an account") && regItems[0]?.t.startsWith("Balance"), regItems.map((i) => i.t).join(" | "));
-  await shot(page, "3-registered-menu");
-  await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU)]);
-  check("registered: sign out is immediate, and goes home", new URL(page.url()).pathname === "/" && !(await page.$("dialog[open]")) && !(await page.$(BTN)) && !(await sessionCookie(page)));
+  // 3. A registered account signs out at once. The test account's session is signed with the
+  // local AUTH_SECRET, so this part runs against a local server only; on a deployment it's noted.
+  const local = ["localhost", "127.0.0.1"].includes(new URL(base).hostname);
+  if (!local) results.push("NOTE  registered sign-out not run: test sessions are signed with the local secret (covered by the local run)");
+  if (local) {
+    const acct = JSON.parse(tsx("scripts/dev/test-account.ts", "create"));
+    cleanup.push(acct.userId);
+    await page.setCookie({ name: "docket_session", value: acct.token, url: base });
+    await page.goto(`${base}/log`, { waitUntil: "networkidle0" });
+    await page.click(BTN);
+    const regItems = await menuItems(page);
+    const regText = await page.$eval(MENU, (m) => m.innerText);
+    check("registered: the menu shows the email, and no create-account prompt", /ui-test-\d+@example\.test/.test(regText) && !regText.includes("Create an account") && regItems[0]?.t.startsWith("Balance"), regItems.map((i) => i.t).join(" | "));
+    await shot(page, "3-registered-menu");
+    await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU)]);
+    check("registered: sign out is immediate, and goes home", new URL(page.url()).pathname === "/" && !(await page.$("dialog[open]")) && !(await page.$(BTN)) && !(await sessionCookie(page)));
+  }
 } catch (e) {
   console.log(results.join("\n"));
   throw e;
