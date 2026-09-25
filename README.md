@@ -9,22 +9,31 @@ Docket makes an image from your prompt with FLUX.1 [schnell], then renders a rea
 
 | Home | A camera move, compared against its still | A run's permanent record |
 |---|---|---|
-| <img src="docs/screenshots/readiness-production/home-mobile.png" width="220"> | <img src="docs/screenshots/feat-make/5-example-mobile.png" width="220"> | <img src="docs/screenshots/readiness-production/log-entry-mobile.png" width="220"> |
+| <img src="docs/screenshots/readiness-production/home-mobile.png" width="220"> | <img src="docs/screenshots/freeze/5-example-mobile.png" width="220"> | <img src="docs/screenshots/readiness-production/log-3e626b64-9380-4fbd-9318-b0ef89d8613c-mobile.png" width="220"> |
 
 ---
 
 ## What to click first
 
-1. **Open the site.** The pair at the top is a real camera move over the library still it was rendered over: drag the handle to compare them. Then **describe an image and press Make the image.**
+1. **Open the site and read home, top to bottom.** It's short, and it explains Docket rather than selling it.
+   - The pair at the top is a real camera move over the library still it was rendered over: drag the handle, or use the arrow keys, to compare them.
+   - **How it works** is one real published run, shown as its still, its move and its receipt line. **See a real run's record** opens that run's permanent page.
+   - **Free to start** gives the starter credits, the prices and the daily limits, read from the same values the server enforces.
+2. **Press Start making, describe an image, and press Make the image.**
    - There's no signup wall: the first press starts a guest session with 100 credits.
    - The run lands on `/make`, at the top of your log, with what it cost.
-   - Free images are shared and counted in the open. The box says how many are left today (57 a day for the whole deployment; 5 a day on the free plan, more on a paid one; see [Limits](#limits-compute-and-image-quota)).
-   - If today's images are used up, go straight to step 2: camera moves don't use them.
-2. **Press Move the camera over this** (or, on home, **Move the camera over a library image**), choose a move, and press **Render the move**.
-   - The finished take opens under a drag handle: drag it, or use the arrow keys, to compare the still with the move.
+   - Free images are shared and counted in the open: 57 a day for the whole deployment, 5 a day on the free plan, more on a paid one (see [Limits](#limits-compute-and-image-quota)).
+   - If today's images are used up, home and `/make` lead with **Move the camera over a library image** instead: camera moves don't use them.
+3. **Press Move the camera over this**, choose a move, and press **Render the move**.
+   - The finished take opens under the drag handle.
    - Your first render is live, made by ffmpeg on the server as you wait. After that, and always for arcs and rack focus, you get a free pre-rendered example, labelled as one.
-3. **Press Open** on any run to see its permanent record at `/log/<id>`. Runs are private; a registered account can publish one to the public log.
-4. **Open Credits and choose Pro.**
+4. **Press Open** on any run to see its permanent record at `/log/<id>`.
+   - Runs are private; a registered account can publish one.
+   - Everyone's published runs, and the library, are at `/log?scope=public`.
+5. **Open the account menu:** your balance, top right.
+   - It shows who you are, your balance (→ Credits), your log, and Sign out.
+   - As a guest, it leads with **Create an account to keep your runs**. **Sign out** asks first, because a guest's runs live only in this browser's cookie.
+6. **Open Credits and choose Pro.**
    - The checkout is a labelled demo with a prefilled test card, and the promo code **`AHSAN345`** takes 100% off.
    - No payment is processed; see [Payments](#payments-there-are-none).
    - The credits land in your log's list view, with your balance after them.
@@ -367,22 +376,24 @@ Seed content:
 
 These run against the real database and storage, clean up after themselves, and never spend the image quota.
 
-- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log,limits}.ts` (127 checks)
+- **Database:** `npx tsx --conditions react-server scripts/verify-{auth,ledger,jobs,plans,video,log,limits}.ts` (128 checks)
   - races and exactly-once refunds
   - the daily allowance
   - the render policy and kill switch
   - the plan and promo guards
   - that every stated limit is the enforced one
   - the log's privacy rules
-- **UI:** start the app with `IMAGE_PROVIDER=fixture npx next start -p 3100`, then run `node scripts/dev/ui-{make,log,home,credits}-e2e.mjs http://localhost:3100 [screenshotDir] [--mobile]`. It's headless Chrome as a stranger, at 390px and 1440px.
+- **UI:** start the app with `IMAGE_PROVIDER=fixture npx next start -p 3100`, then run `node scripts/dev/ui-{make,log,home,credits,menu}-e2e.mjs http://localhost:3100 [screenshotDir] [--mobile]`. It's headless Chrome as a stranger, at 390px and 1440px.
+  - `ui-home-e2e` and `ui-menu-e2e` also run against production: home read-only, against the live allowance; the menu creates a guest and a test account and deletes them.
 - **Design system:** `node scripts/dev/design-system-check.mjs <baseUrl> [dir] [--mobile]` checks `/style` for contrast, focus, tap targets, reduced motion and the handle's keyboard control.
 - **Readiness:** `node scripts/dev/readiness.mjs <baseUrl> [dir]` arrives cold, like a reviewer: a fresh browser, no cookies, signed out, at 390px and 1440px.
   - It checks every page, a real 404, every old URL's redirect, no trace of the old identity, tap targets and 16px controls, the real allowance, and that browsing creates no session.
   - It checks the share previews of home, a published move and the longest-prompt library image (og:title, og:description, a 1200×630 og:image that loads, twitter:card), and that a long title is cut at a word.
-  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, after the reviewer-pass fixes) passed 76/76.
+  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, at the feature freeze) passed 76/76, alongside the home e2e (read-only, 23/23 at each width) and the menu e2e's guest part (20/20 at each width).
 
 ## How it was built
 
 - One branch per chunk and a PR for each: what, why this now, what's deliberately not in it, how to verify, and screenshots at 390px and 1440px. PRs are merged with a merge commit.
 - `STATUS.md` was rewritten at the end of every branch.
+- The walkthrough video follows [`docs/walkthrough.md`](docs/walkthrough.md): a 4:30 beat sheet with the exact lines said to camera.
 - Every prompt and final response of the AI-assisted build is captured by hooks into [`.agent-logs/`](.agent-logs) and committed with the code. That includes the design directions as offered and my decisions as I gave them.

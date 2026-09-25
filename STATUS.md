@@ -1,16 +1,22 @@
 # Status
 
-_Rewritten at the end of every branch. Resume from **Next action**._
+**Features are frozen as of 2026-09-26.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
 
-**Production:** https://higgsfield-ai-clone.vercel.app. Production deploys from `main` succeed again (#16, #17 live); **preview** builds still fail. Originally builds were blocked because the Hobby Fluid Active CPU allowance is exhausted (6h 51m of 4h, from ffmpeg renders). The owner is staying on Hobby. PRs merge after local verification at 390px and 1440px; `main` deploys automatically when builds resume. Retry a deploy at most every 30 min.
-**Kill switch (no deploy):** `npx tsx --conditions react-server scripts/ops/render-mode.ts prerendered` (or `live`). Takes effect within ~10s.
+**Production:** https://higgsfield-ai-clone.vercel.app. It serves Docket at `/` from `main` (commit `0984d09` or later), and `/api/health` reports the deployed commit. Hobby plan: production deploys work; preview builds fail and don't matter.
+**Kill switch (no deploy):** `npx tsx --conditions react-server scripts/ops/render-mode.ts prerendered` (or `live`). Takes effect within ~10 s. It's `live` as of 2026-09-26.
 
-**Works end to end now:**
-- **Image:** a stranger opens `/ai/image`, prompt → Generate → a real FLUX.1 schnell image in History, credits 100 → 98 (checkpoint passed on production).
-- **Video:** a stranger opens `/ai/video`, picks a preset from the gallery (14 real preview renders), adds an image (theirs or the library; or "Animate" from any image's lightbox), Generate → a real ffmpeg-rendered MP4 in History, credits 100 → 70, lightbox labelled RENDERED CAMERA MOVE (passed 10/10 on production at 390px).
-- **Explore (`/`):** dense landing, signed out and signed in (auth slots): hero cards, promo card + 6 quick links, 3 banners, 8 media sections (preset preview videos + 68 seed images), a key-art grid, a tag cloud, and a lime footer with a not-affiliated disclaimer. Every one of ~90 links returns 200; tiles open `/ai/image?prompt=` or `/ai/video?preset=`.
-- **Paywall:** a 402 in either studio opens "Upgrade plan to buy credits" (recon 23) with the real shortfall. Basic/Pro/Max show credits translated into outcomes and annual prices with the monthly price struck through. Choosing a plan is a labelled demo (no payment): it switches the plan and grants that plan's credits, at most once per plan per user. Also at `/pricing`, and via Get more credits on `/credits`.
-- **Assets:** `/assets` shows everything the user made (examples badged), filter by type; lightbox Download / Animate / Reuse (prefills `/ai/image?prompt=`) / Delete (confirm; soft delete).
+**What a stranger can do, end to end, on production:**
+- **Home** explains Docket, with the real pair and handle; how it works as three real artifacts from one published run; what's real; free to start, from the enforced values; **Start making**; and a four-entry public strip.
+- **`/make`** makes an image (FLUX.1 [schnell] on Cloudflare Workers AI), then moves the camera over it (ffmpeg): live for the first render (1 as a guest, 3 with an account), then pre-rendered examples, labelled and free.
+- **`/log`** is your runs and every credit movement, with the balance after each. `/log/<id>` is a run's permanent record, with share previews when it's public. `/log?scope=public` is everyone's published runs plus the library.
+- **`/credits`** shows plans that state their limits beside their credits, and the labelled demo checkout (`AHSAN345` takes 100% off).
+- **The account menu**, top right: who you are, balance, your log, sign out. A guest's sign-out warns first.
+
+**Last verification (2026-09-26, production at `0984d09`, 390px and 1440px):** readiness **76/76**; `ui-home-e2e` **23/23** at each width (read-only; the live allowance was 0 of 57, so the out-of-images layout was checked); `ui-menu-e2e` **20/20** at each width (the guest part, including the sign-out warning). Locally, on a fixture server: make 24, log 12, home 24, credits 20 and menu 22, all passing at both widths; database checks 128.
+
+**Owner to-dos, not blocking:**
+- The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) still carry the old name; the GitHub repo is now `docket-nahsan`. The README's **Live:** link is the only domain serving Docket. If you submit a different domain, change that line.
+- Record the walkthrough from [`docs/walkthrough.md`](docs/walkthrough.md), after 00:00 UTC so free images are left.
 
 ## Plan: redesign (Docket), order changed 2026-09-25: switch-over before README, both this session
 
@@ -49,10 +55,11 @@ Earlier build (the clone) is PRs #1–#21; production has been green throughout.
 4. `fix/preset-names-sentence-case`: the 13 Title Case preset names and the video model ("Camera motion") are in sentence case, reseeded; `verify-log` fails on a Title Case preset. Still picker checked, left as-is: each button carries `aria-label` = the prompt, the image inside is `alt=""`, so the prompt is read once. Two stale `ui-make-e2e` checks fixed on the way: the library check assumed library entries lead the public log (published runs do since #32), and the pending check slept past the 1.5 s fixture on mobile (now polls).
 5. `chore/readiness-after-fixes`: readiness on production at 390px and 1440px, **76/76**; screenshots refreshed. The reviewer-pass list is done.
 
-## Last changes before the feature freeze (owner, 2026-09-26)
-1. `feat/home-explains`: home explains (headline + who it's for; real pair; how it works as three real artifacts from one published run; what's real, linked to a real record; free to start from the enforced values; one primary action; a four-entry public strip). The public log page is `/log?scope=public` (`listPublicLogPage`, stable order, offset paging; API `?offset=`). Home e2e rewritten, 24/24 at 390 and 1440; `verify-log` 20/20.
-2. `feat/account-menu`: the balance is a menu button (who you are, Balance → /credits, Your log, Sign out). Guests: the menu leads with creating an account; sign-out confirms, saying the runs become unreachable for good. On phones with a session, the nav drops its Credits link (the menu's Balance goes there) so a four-digit balance fits. `ui-menu-e2e` 22/22 at 390 and 1440.
-3. then: readiness on production, README screenshots and What to click first, the Live link, STATUS frozen, walkthrough beat sheet.
+## Last changes before the feature freeze (owner, 2026-09-26): done
+1. `feat/home-explains` (PR #36): home explains (headline + who it's for; real pair; how it works as three real artifacts from one published run; what's real, linked to a real record; free to start from the enforced values; one primary action; a four-entry public strip). The public log page is `/log?scope=public` (`listPublicLogPage`, stable order, offset paging; API `?offset=`). Home e2e rewritten, 24/24 at 390 and 1440; `verify-log` 20/20.
+2. `feat/account-menu` (PR #37): the balance is a menu button (who you are, Balance → /credits, Your log, Sign out). Guests: the menu leads with creating an account; sign-out confirms, saying the runs become unreachable for good. On phones with a session, the nav drops its Credits link (the menu's Balance goes there) so a four-digit balance fits. `ui-menu-e2e` 22/22 at 390 and 1440.
+3. `fix/home-tap-targets` (PR #38): two record links on home were under 32px (caught by readiness on production). The home e2e runs read-only on production; the menu e2e's registered part runs locally only.
+4. `chore/freeze-docket`: readiness, home and menu against production; README screenshots, What to click first and the Live link checked; this STATUS; `docs/walkthrough.md`.
 
 ## Where things stand (2026-09-25)
 - **`/` serves Docket on production** since 14:45 UTC (commit `8a46afb`). Readiness against production: **76/76** on 2026-09-26 after the reviewer-pass fixes (#31–#34), including share previews and word-boundary titles (fresh browser, no cookies, signed out, 390 and 1440; `docs/screenshots/readiness-production/`).
