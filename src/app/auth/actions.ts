@@ -3,8 +3,7 @@
 import { redirect } from "next/navigation";
 import { registerUser, signIn } from "@/lib/auth/accounts";
 import { getCurrentUser } from "@/lib/auth/current-user";
-import { createSession, destroySession } from "@/lib/auth/session";
-import { ROUTES } from "@/components/docket/routes";
+import { createSession } from "@/lib/auth/session";
 
 export type AuthFormState = { error?: string; field?: "email" | "password" | "name"; email?: string } | undefined;
 
@@ -36,7 +35,4 @@ export async function signInAction(_prev: AuthFormState, formData: FormData): Pr
   redirect(safeNext(formData.get("next")));
 }
 
-export async function signOutAction(): Promise<void> {
-  await destroySession();
-  redirect(ROUTES.home);
-}
+// Sign-out is a route, not an action: see app/api/auth/sign-out.

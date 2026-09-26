@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { signOutAction } from "@/app/auth/actions";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Segmented } from "@/components/ui/segmented";
 import { Sheet } from "@/components/ui/sheet";
@@ -13,6 +12,7 @@ import type { PlanView } from "@/lib/billing/plans";
 import { formatCredits } from "@/lib/credits/format";
 import { ROUTES } from "../routes";
 import { Checkout, CheckoutDone, type CheckoutResult } from "./checkout";
+import { SignOutForm } from "../auth/sign-out-form";
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -85,11 +85,13 @@ export function CreditsPage({
           {account.kind === "registered" ? (
             <>
               <p className="t-body">Signed in as {account.email}.</p>
-              <form action={signOutAction}>
-                <Button type="submit" variant="secondary">
-                  Sign out
-                </Button>
-              </form>
+              <SignOutForm>
+                {(pending) => (
+                  <Button type="submit" variant="secondary" pending={pending}>
+                    {pending ? "Signing out…" : "Sign out"}
+                  </Button>
+                )}
+              </SignOutForm>
             </>
           ) : account.kind === "guest" ? (
             <>

@@ -32,14 +32,67 @@ const focusSettles = (page, want) => page.waitForFunction((w) => document.active
 const menuItems = (page) => page.$$eval(`${MENU} [role="menuitem"]`, (els) => els.map((e) => ({ t: e.textContent.replace(/\s+/g, " ").trim(), href: e.getAttribute("href"), h: e.getBoundingClientRect().height })));
 const sessionCookie = async (page) => (await page.cookies()).find((c) => c.name === "docket_session")?.value;
 
+// Completes a sign-out and checks all of it: "Signing out…" while it runs, a POST to the route
+// (not a server action), home, the cookie gone, "Sign in" in the header without a refresh, and
+// still signed out after a reload.
+async function completeSignOut(page, who, signOut) {
+  // First with the navigation cancelled, to read the pending state: a submit listener on window
+  // runs after React's (which sets "Signing out…") and stops the browser leaving. Then for real.
+  const here = page.url();
+  await page.evaluate(() => window.addEventListener("submit", (e) => e.preventDefault(), { once: true }));
+  await signOut();
+  const pendingLabel = await page.waitForFunction(() => [...document.querySelectorAll("button")].some((b) => b.textContent.trim() === "Signing out…" && b.disabled), { timeout: 5000 }).then(() => true, () => false);
+  // Reload to a fresh page (still signed in); retry if Chrome is still settling.
+  for (let i = 0; i < 3; i++) {
+    const ok = await page.goto(here, { waitUntil: "domcontentloaded" }).then(() => true, () => false);
+    if (ok && (await page.waitForSelector(BTN, { timeout: 15000 }).then(() => true, () => false))) break;
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  const posts = [];
+  const onResponse = (r) => r.request().method() === "POST" && posts.push({ path: new URL(r.url()).pathname, status: r.status(), action: !!r.request().headers()["next-action"] });
+  page.on("response", onResponse);
+  await signOut();
+  await page.waitForFunction(() => location.pathname === "/" && !!document.querySelector("header nav"), { timeout: 30000 });
+  await page.waitForFunction(() => [...document.querySelectorAll("header a")].some((a) => a.textContent.trim() === "Sign in"), { timeout: 10000 }).catch(() => {});
+  const header = await page.$eval("header", (h) => h.innerText.replace(/\s+/g, " ").trim());
+  const cookieGone = !(await sessionCookie(page));
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.waitForSelector("header nav");
+  const afterReload = await page.$eval("header", (h) => h.innerText.replace(/\s+/g, " ").trim());
+  page.off("response", onResponse);
+  const route = posts.find((x) => x.path === "/api/auth/sign-out");
+  check(`${who}: the button says "Signing out…", and can't be pressed twice, while it runs`, pendingLabel);
+  check(`${who}: sign-out posts to /api/auth/sign-out (a route, not a server action) and gets a 303`, !!route && route.status === 303 && !route.action, JSON.stringify(posts));
+  check(`${who}: lands on home, the session cookie is gone, and the header says Sign in without a refresh`, new URL(page.url()).pathname === "/" && cookieGone && /Sign in/.test(header) && !/credits/.test(header), header);
+  check(`${who}: a reload stays signed out`, /Sign in/.test(afterReload) && !(await sessionCookie(page)) && !(await page.$(BTN)), afterReload);
+}
+
+// One request handler for the whole run, switched by a flag:
+// - stale: rewrite every server-action id to one from another build, as a tab opened before a
+//   deploy would send;
+const STALE_ACTION_ID = "006c66078c5ea8bbc3db01beb4c00a6be9638357fb";
+const net = { stale: false };
+async function interceptRequests(page) {
+  await page.setRequestInterception(true);
+  page.on("request", (r) => {
+    const h = r.headers();
+    if (net.stale && h["next-action"]) return r.continue({ headers: { ...h, "next-action": STALE_ACTION_ID } });
+    r.continue();
+  });
+}
+
 const cleanup = [];
 const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, userDataDir: mkdtempSync(join(tmpdir(), "docket-menu-")), args: ["--no-first-run"] });
 try {
   const page = await browser.newPage();
+  await interceptRequests(page);
   await page.setViewport({ width: mobile ? 390 : 1440, height: mobile ? 844 : 900, deviceScaleFactor: 2, isMobile: mobile, hasTouch: mobile });
 
   // 1. Signed out: "Sign in", as before.
-  await page.goto(`${base}/make`, { waitUntil: "networkidle0", timeout: 60000 });
+  // Wait for elements, not network idle: /make has autoplaying camera moves that never let the
+  // network go idle.
+  await page.goto(`${base}/make`, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForSelector("header nav");
   check("signed out: the header says Sign in, and there's no account menu", (await page.$$eval("header a", (as) => as.some((a) => a.textContent.trim() === "Sign in" && a.getAttribute("href") === "/sign-in"))) && !(await page.$(BTN)));
 
   // 2. A guest session.
@@ -47,7 +100,8 @@ try {
   const guestToken = await sessionCookie(page);
   const guestId = JSON.parse(Buffer.from(guestToken.split(".")[1], "base64url").toString()).sub;
   cleanup.push(guestId);
-  await page.goto(`${base}/make`, { waitUntil: "networkidle0" });
+  await page.goto(`${base}/make`, { waitUntil: "domcontentloaded" });
+  await page.waitForSelector(BTN);
   const btn = await page.$eval(BTN, (b) => ({ text: b.childNodes[0].textContent.trim(), popup: b.getAttribute("aria-haspopup"), controls: b.getAttribute("aria-controls"), h: b.getBoundingClientRect().height }));
   check("with a session, the button shows the balance and is a menu button", /^\d+ credits$/.test(btn.text) && btn.popup === "menu" && !!btn.controls && btn.h >= 32, JSON.stringify(btn));
   const clash = await page.evaluate((s) => { const b = document.querySelector(s).getBoundingClientRect(); const links = [...document.querySelectorAll('header nav a')].filter((a) => a.offsetParent).map((a) => a.getBoundingClientRect()); return { last: Math.round(Math.max(...links.map((r) => r.right))), button: Math.round(b.left) }; }, BTN);
@@ -85,6 +139,7 @@ try {
   await page.keyboard.press("Enter");
   check("Enter on the button opens it at the first item", (await focusSettles(page, items[0].t)) && (await expanded(page)) === "true");
   await page.mouse.click(mobile ? 40 : 200, 400);
+  await page.waitForFunction((s) => document.querySelector(s).getAttribute("aria-expanded") === "false", { timeout: 2000 }, BTN).catch(() => {});
   check("a click outside closes it", (await expanded(page)) === "false" && !(await menuShown(page)));
 
   // Guest sign-out asks first, and says exactly what's lost.
@@ -99,11 +154,15 @@ try {
   await page.keyboard.press("Escape");
   await page.waitForFunction(() => !document.querySelector("dialog[open]"));
   check("backing out keeps the session", (await sessionCookie(page)) === guestToken && !!(await page.$(BTN)));
-  await page.click(BTN);
-  await page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU);
-  await page.waitForSelector("dialog[open] [data-testid='guest-sign-out']");
-  await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.textContent.trim() === "Sign out and lose these runs").click())]);
-  check("confirming signs the guest out and goes home", new URL(page.url()).pathname === "/" && !(await sessionCookie(page)) && !(await page.$(BTN)));
+  // As a tab opened before a deploy: every server-action id it sends is stale. Sign-out still works.
+  net.stale = true;
+  await completeSignOut(page, "guest, as a stale tab", async () => {
+    await page.click(BTN);
+    await page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU);
+    await page.waitForSelector("dialog[open] [data-testid='guest-sign-out']");
+    await page.evaluate(() => [...document.querySelectorAll("dialog[open] button")].find((b) => b.textContent.trim() === "Sign out and lose these runs").click());
+  });
+  net.stale = false;
 
   // 3. A registered account signs out at once. The test account's session is signed with the
   // local AUTH_SECRET, so this part runs against a local server only; on a deployment it's noted.
@@ -113,14 +172,33 @@ try {
     const acct = JSON.parse(tsx("scripts/dev/test-account.ts", "create"));
     cleanup.push(acct.userId);
     await page.setCookie({ name: "docket_session", value: acct.token, url: base });
-    await page.goto(`${base}/log`, { waitUntil: "networkidle0" });
+    await page.goto(`${base}/log`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector(BTN);
     await page.click(BTN);
     const regItems = await menuItems(page);
     const regText = await page.$eval(MENU, (m) => m.innerText);
     check("registered: the menu shows the email, and no create-account prompt", /ui-test-\d+@example\.test/.test(regText) && !regText.includes("Create an account") && regItems[0]?.t.startsWith("Balance"), regItems.map((i) => i.t).join(" | "));
     await shot(page, "3-registered-menu");
-    await Promise.all([page.waitForNavigation({ waitUntil: "networkidle0" }), page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU)]);
-    check("registered: sign out is immediate, and goes home", new URL(page.url()).pathname === "/" && !(await page.$("dialog[open]")) && !(await page.$(BTN)) && !(await sessionCookie(page)));
+    const dialogBefore = !!(await page.$("dialog[open]"));
+    await completeSignOut(page, "registered", async () => {
+      if ((await page.$eval(BTN, (b) => b.getAttribute("aria-expanded"))) !== "true") await page.click(BTN);
+      await page.evaluate((m) => [...document.querySelectorAll(`${m} [role="menuitem"]`)].find((e) => e.textContent.trim() === "Sign out").click(), MENU);
+    });
+    check("registered: no warning, sign-out is immediate", !dialogBefore);
+
+    // 4. Sign-in from a stale tab: the action isn't found, so the page reloads and asks again.
+    // Local only: it types a made-up email and password into the form.
+    await page.goto(`${base}/sign-in`, { waitUntil: "domcontentloaded" });
+    await page.waitForSelector("#email");
+    net.stale = true;
+    await page.type("#email", "nobody@example.test");
+    await page.type("#password", "not-a-real-password");
+    await page.evaluate(() => [...document.querySelectorAll("main form button[type=submit]")].find((b) => b.textContent.trim() === "Sign in").click());
+    await page.waitForFunction(() => location.search.includes("retry=1"), { timeout: 20000 }).catch(() => {});
+    await page.waitForSelector('[data-testid="retry-note"]', { timeout: 20000 }).catch(() => {});
+    const note = await page.$eval('[data-testid="retry-note"]', (e) => e.innerText).catch(() => "");
+    check("sign-in from a stale tab reloads and asks to try again, instead of failing silently", new URL(page.url()).searchParams.get("retry") === "1" && note.includes("Please try again"), note);
+    net.stale = false;
   }
 } catch (e) {
   console.log(results.join("\n"));

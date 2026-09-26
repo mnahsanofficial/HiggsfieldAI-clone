@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
-import { signOutAction } from "@/app/auth/actions";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Sheet } from "@/components/ui/sheet";
 import { formatCredits } from "@/lib/credits/format";
+import { SignOutForm } from "./auth/sign-out-form";
 import { ROUTES } from "./routes";
 
 type Account = { kind: "guest" | "registered"; email: string | null; balanceTenths: number };
@@ -159,11 +159,13 @@ export function AccountMenu({ account }: { account: Account }) {
             Sign out
           </button>
         ) : (
-          <form action={signOutAction} role="none">
-            <button type="submit" role="menuitem" tabIndex={-1} className={item}>
-              Sign out
-            </button>
-          </form>
+          <SignOutForm role="none">
+            {(pending) => (
+              <button type="submit" role="menuitem" tabIndex={-1} className={item} disabled={pending} aria-busy={pending || undefined}>
+                {pending ? "Signing out…" : "Sign out"}
+              </button>
+            )}
+          </SignOutForm>
         )}
       </div>
 
@@ -183,11 +185,13 @@ export function AccountMenu({ account }: { account: Account }) {
             <p className="t-body">Create an account first and they stay yours.</p>
             <div className="flex flex-col gap-2 sm:flex-row-reverse sm:justify-start">
               <ButtonLink href={`${ROUTES.signUp}?next=${encodeURIComponent(pathname || "/")}`}>Create an account</ButtonLink>
-              <form action={signOutAction}>
-                <Button type="submit" variant="danger" className="w-full">
-                  Sign out and lose these runs
-                </Button>
-              </form>
+              <SignOutForm>
+                {(pending) => (
+                  <Button type="submit" variant="danger" className="w-full" pending={pending}>
+                    {pending ? "Signing out…" : "Sign out and lose these runs"}
+                  </Button>
+                )}
+              </SignOutForm>
             </div>
           </div>
         </Sheet>
