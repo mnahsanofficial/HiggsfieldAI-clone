@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { unstable_isUnrecognizedActionError } from "next/navigation";
 import { useActionState } from "react";
 import { type AuthFormState, signInAction, signUpAction } from "@/app/auth/actions";
 import { Button } from "@/components/ui/button";
@@ -9,8 +10,24 @@ import { ROUTES } from "../routes";
 
 // Sign in and create an account, on the existing server actions. Creating an account from a
 // guest session keeps that session's runs and credits.
-export function AuthForm({ mode, next, isGuest }: { mode: "sign-in" | "sign-up"; next: string; isGuest: boolean }) {
-  const [state, action, pending] = useActionState<AuthFormState, FormData>(mode === "sign-up" ? signUpAction : signInAction, undefined);
+export function AuthForm({ mode, next, isGuest, retried = false }: { mode: "sign-in" | "sign-up"; next: string; isGuest: boolean; retried?: boolean }) {
+  const serverAction = mode === "sign-up" ? signUpAction : signInAction;
+  const [state, action, pending] = useActionState<AuthFormState, FormData>(async (prev, data) => {
+    try {
+      return await serverAction(prev, data);
+    } catch (e) {
+      // A server action's id changes with every build: a page opened before a deploy posts one
+      // the new deployment doesn't know. Reload it (once) and ask for another try, rather than
+      // failing silently. The reloaded page renders the note from ?retry=1.
+      if (unstable_isUnrecognizedActionError(e) && !retried) {
+        const url = new URL(window.location.href);
+        url.searchParams.set("retry", "1");
+        window.location.replace(url);
+        return prev;
+      }
+      throw e;
+    }
+  }, undefined);
   const q = next !== ROUTES.home ? `?next=${encodeURIComponent(next)}` : "";
   const err = (field: "email" | "password" | "name") => (state?.field === field ? state.error : undefined);
 
@@ -27,6 +44,11 @@ export function AuthForm({ mode, next, isGuest }: { mode: "sign-in" | "sign-up";
         </p>
       </div>
 
+      {retried && (
+        <p role="status" className="t-body rounded-xl bg-field p-4" data-testid="retry-note">
+          Docket was updated while this page was open, so it reloaded. Please try again.
+        </p>
+      )}
       <form action={action} className="flex flex-col gap-4" noValidate>
         <input type="hidden" name="next" value={next} />
         {mode === "sign-up" && (

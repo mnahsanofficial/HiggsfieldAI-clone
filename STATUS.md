@@ -6,6 +6,20 @@
 - The walkthrough script is `docs/walkthrough.md`: 4:28, with beat 2 in the owner's final whys.
 - Record when `/make` shows free images left. They reset at 00:00 UTC.
 
+**Sign-out from a stale tab (2026-09-26):**
+- **The owner's report:** sign-out did nothing. Their tab dated from before that afternoon's deploys.
+- **The cause:** sign-out was a server action, and action ids change every build. There's no skew protection on Hobby, so production answered 404 "Server action not found" and the client threw `UnrecognizedActionError`. Reproduced by sending another build's id.
+- **The fix:**
+  - Sign-out is a plain form POST to `/api/auth/sign-out`: same-origin check, clears the cookie, 303 to home. The guest warning stays.
+  - A "Signing out…" pending state on both buttons.
+  - Sign-in and sign-up reload with a "please try again" note when their action isn't found.
+- **Tests (`ui-menu-e2e`):**
+  - a guest signs out as a stale tab
+  - a registered account signs out (local)
+  - a stale sign-in reloads and asks again (local)
+  - each sign-out asserts "Signing out…", the route and its 303, home, the cookie gone, "Sign in" without a refresh, and a reload staying signed out
+  - the network-idle waits are replaced by element waits
+
 **The domain move (2026-09-26):**
 - The app lives only at https://docket-nahsan.vercel.app. higgsfield-ai-clone.vercel.app was retired and returns 404.
 - **Share previews:** they took the old host from `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel sets at build time. One production redeploy picked up the new domain; `og:url` and `og:image` now use it.
