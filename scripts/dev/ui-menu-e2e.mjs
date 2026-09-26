@@ -138,6 +138,9 @@ try {
   await page.keyboard.press("Escape");
   await page.keyboard.press("Enter");
   check("Enter on the button opens it at the first item", (await focusSettles(page, items[0].t)) && (await expanded(page)) === "true");
+  // The outside-click listener attaches just after the menu paints; a person can't click outside
+  // within that frame, but a script can, so let two frames pass first.
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
   await page.mouse.click(mobile ? 40 : 200, 400);
   await page.waitForFunction((s) => document.querySelector(s).getAttribute("aria-expanded") === "false", { timeout: 2000 }, BTN).catch(() => {});
   check("a click outside closes it", (await expanded(page)) === "false" && !(await menuShown(page)));
