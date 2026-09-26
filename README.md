@@ -217,6 +217,8 @@ Checked and left alone:
 
 ## Limits: compute and image quota
 
+**Why older PRs show a red "preview" check:** every preview deployment failed before building, at the Neon integration's per-preview provisioning step ("Resource provisioning failed"), while every production deploy from `main` succeeded; `vercel.json` now turns preview deployments off, so the live site is the only deployment.
+
 This runs on free tiers, and both limits are shown to the people they affect.
 
 ### Compute: Vercel Hobby
