@@ -14,6 +14,8 @@ const publicSans = localFont({
   variable: "--font-public-sans",
 });
 
+// The project's production domain (docket-nahsan.vercel.app), set by Vercel at build time, so
+// share previews and permalinks always point at the live site, whatever host a request came in on.
 const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
 
 export const metadata: Metadata = {

@@ -4,7 +4,7 @@ The target is 4:30, which leaves 30 seconds of margin under 5:00. The spoken lin
 
 **Before you record**
 - **Record after 00:00 UTC** so there are free images left today. `/make` shows "N free images left today". If they're gone, home and `/make` lead with the camera move; use the fallback noted in beat 5.
-- **Use a fresh browser window at 1440px**, signed out: a private window is enough. Your first camera move will then be a live render (a guest gets one).
+- **Use a fresh browser window at 1440px** on https://docket-nahsan.vercel.app, signed out: a private window is enough. Your first camera move will then be a live render (a guest gets one).
 - **Check that rendering is live:** `npx tsx --conditions react-server scripts/ops/render-mode.ts` should print `current render mode: live`.
 - **Rehearse on a fixture server** (`IMAGE_PROVIDER=fixture npx next start -p 3100`), not production. A rehearsal on production spends a real image and a real render.
 - **Pick your moves.** For the live render, use Slow push-in or Pan right. Arcs and rack focus are always pre-rendered.
