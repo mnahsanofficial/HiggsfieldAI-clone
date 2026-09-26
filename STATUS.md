@@ -6,6 +6,18 @@
 - The walkthrough script is `docs/walkthrough.md`: 4:28, with beat 2 in the owner's final whys.
 - Record when `/make` shows free images left. They reset at 00:00 UTC.
 
+**The domain move (2026-09-26):**
+- The app lives only at https://docket-nahsan.vercel.app. higgsfield-ai-clone.vercel.app was retired and returns 404.
+- **Share previews:** they took the old host from `VERCEL_PROJECT_PRODUCTION_URL`, which Vercel sets at build time. One production redeploy picked up the new domain; `og:url` and `og:image` now use it.
+- **Nothing else was tied to the old host:**
+  - the session cookie is host-only
+  - server actions check Origin against Host
+  - redirects are path-only
+  - there's no sitemap or robots file, and no site-URL env var
+- **The new domain works:** a guest session and a real generation (FLUX.1, −2 charged, media 200). The test guest was deleted.
+- **Readiness 76/76** on the new domain, at 390 and 1440, with no base URL given: readiness, home and menu now default to the live site.
+- **Links updated:** README, STATUS, the walkthrough, `ship.sh` and the GitHub homepage. Historical mentions stay.
+
 **Finished on 2026-09-26, after the owner's interview:**
 - **#40:** README, "What I changed from Higgsfield, and why".
   - The whys are the owner's own words, from the interview in the session log.
@@ -39,7 +51,7 @@
    - the fixture latency is 3 s
 5. The walkthrough segment: #44, open for the owner's edit.
 
-**Production:** https://higgsfield-ai-clone.vercel.app. It serves Docket at `/` from `main` (commit `0984d09` or later), and `/api/health` reports the deployed commit. Hobby plan: production deploys work; preview builds fail and don't matter.
+**Production:** https://docket-nahsan.vercel.app, the only domain since 2026-09-26. The old one, higgsfield-ai-clone.vercel.app, was retired and returns 404. It serves Docket at `/` from `main`, and `/api/health` reports the deployed commit. Hobby plan: production deploys from `main`; preview deployments are off (#49).
 **Kill switch (no deploy):** `npx tsx --conditions react-server scripts/ops/render-mode.ts prerendered` (or `live`). Takes effect within ~10 s. It's `live` as of 2026-09-26.
 
 **What a stranger can do, end to end, on production:**
@@ -52,7 +64,7 @@
 **Last verification (2026-09-26, production at `f3949e1`, 390px and 1440px):** readiness **76/76** (fresh browser, signed out). With images left today (57 of 57), the two out-of-images checks on `/make` don't apply; on a day they're gone it's 78. Earlier on 2026-09-26, at `67a2799`: `ui-home-e2e` **38/38** read-only at each width. At `311605f`: `ui-menu-e2e` **20/20** (the guest part). Locally, on a fixture server: make 28, credits 22, home 39, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
 
 **Owner to-dos, not blocking:**
-- The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) still carry the old name; the GitHub repo is now `docket-nahsan`. The README's **Live:** link is the only domain serving Docket. If you submit a different domain, change that line.
+- Done 2026-09-26: the project, repo and domain all carry the Docket name now (`docket-nahsan`, https://docket-nahsan.vercel.app).
 - Record the walkthrough from [`docs/walkthrough.md`](docs/walkthrough.md), after 00:00 UTC so free images are left.
 
 ## Plan: redesign (Docket), order changed 2026-09-25: switch-over before README, both this session

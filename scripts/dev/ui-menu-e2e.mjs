@@ -4,15 +4,17 @@
 // account, and a guest's sign-out warns before it loses the runs; a registered account signs out
 // at once (local servers only: the test session is signed with the local secret). Both land
 // on home. Makes nothing; deletes its accounts afterwards.
-// usage: node scripts/dev/ui-menu-e2e.mjs <baseUrl> [screenshotDir] [--mobile]
+// usage: node scripts/dev/ui-menu-e2e.mjs [baseUrl] [screenshotDir] [--mobile]   (baseUrl defaults to the live site)
 import puppeteer from "puppeteer-core";
 import { execFileSync } from "node:child_process";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { LIVE_URL } from "./live-url.mjs";
 
 const CHROME = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const [, , base, shotDir, flag] = process.argv;
+const [, , baseArg, shotDir, flag] = process.argv;
+const base = baseArg || LIVE_URL;
 const mobile = flag === "--mobile";
 const tag = mobile ? "mobile" : "desktop";
 const results = [];

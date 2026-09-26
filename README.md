@@ -5,15 +5,14 @@
 1. **What it is:** Docket makes an image from your prompt, then renders a real camera move over it, and every run stays on the record: the model, the cost, any refund. [Design](#design)
 2. **The three biggest changes from Higgsfield:** one press to a first image instead of a seven-step quiz and four interruptions; the price on the button, with no countdowns and no struck-through "original"; and one log instead of separate History and Assets. [What I changed](#what-i-changed-from-higgsfield-and-why)
 3. **What's real:** every screen reads Postgres through the API, images come from FLUX.1 [schnell] on Cloudflare Workers AI, camera moves are rendered by ffmpeg, and every credit is on a ledger. Payments are the one labelled demo. [What's real](#whats-real)
-4. **Where to click first:** **Start making**, make an image, **Move the camera over this**, drag the handle, then **Open** the run's record. [What to click first](#what-to-click-first)
+4. **Where to click first:** open https://docket-nahsan.vercel.app, then **Start making**, make an image, **Move the camera over this**, drag the handle, then **Open** the run's record. [What to click first](#what-to-click-first)
 5. **How it's checked:** a readiness run against production, in a fresh browser at 390px and 1440px, plus database and UI suites. [Verification](#verification)
 
 **Make an image, then move the camera over it. Every run stays on the record.**
 
 Docket makes an image from your prompt with FLUX.1 [schnell], then renders a real camera move over it with ffmpeg: a push-in, a pan, an arc, a rack focus, 14 in all. Everything you make lands in your log with its receipt: the model that ran, what it cost, how long it took, and any refund. The log is the library and the ledger at once.
 
-**Live:** https://higgsfield-ai-clone.vercel.app
-(The deployment keeps the name from the first brief, when this was a clone. See [History](#history-from-a-clone-to-docket).)
+**Live:** https://docket-nahsan.vercel.app
 
 | Home | A camera move, compared against its still | A run's permanent record |
 |---|---|---|
@@ -23,7 +22,7 @@ Docket makes an image from your prompt with FLUX.1 [schnell], then renders a rea
 
 ## What to click first
 
-1. **Open the site and read home, top to bottom.** It's short, and it explains Docket rather than selling it.
+1. **Open [the site](https://docket-nahsan.vercel.app) and read home, top to bottom.** It's short, and it explains Docket rather than selling it.
    - The pair at the top is a real camera move over the library still it was rendered over: drag the handle, or use the arrow keys, to compare them.
    - **How it works** is one real published run, shown as its still, its move and its receipt line. **See a real run's record** opens that run's permanent page.
    - **Free to start** gives the starter credits, the prices and the daily limits, read from the same values the server enforces.
@@ -181,6 +180,8 @@ Building it exposed a data question. A pre-rendered example was rendered over a 
 The backend was real from the first PR: Postgres, a credit ledger, an async job pipeline, FLUX.1 [schnell] images, and ffmpeg camera moves.
 
 **Then 8x changed the brief** (25 September): *"Keep your idea and your backend, and rebuild the frontend with your own layout and visual design. The backend has to be real and connected: a working database and API, not mock data or hardcoded responses."* So it stopped being a clone. The work since then is PRs #22–#29.
+
+**The app moved to https://docket-nahsan.vercel.app on 2026-09-26,** and the old domain, higgsfield-ai-clone.vercel.app, was retired, so older links to it no longer work.
 
 **What changed**
 - **The whole frontend.** Docket was designed from the three directions above and built alongside the old UI so the live link never broke. It became `/` in PR #29.
@@ -421,12 +422,12 @@ These run against the real database and storage, clean up after themselves, and 
   - that every stated limit is the enforced one
   - the log's privacy rules
 - **UI:** start the app with `IMAGE_PROVIDER=fixture npx next start -p 3100`, then run `node scripts/dev/ui-{make,log,home,credits,menu}-e2e.mjs http://localhost:3100 [screenshotDir] [--mobile]`. It's headless Chrome as a stranger, at 390px and 1440px.
-  - `ui-home-e2e` and `ui-menu-e2e` also run against production: home read-only, against the live allowance; the menu creates a guest and a test account and deletes them.
+  - `ui-home-e2e` and `ui-menu-e2e` also run against production, and default to it when no base URL is given: home read-only, against the live allowance; the menu creates a guest and deletes it. The make, credits and log e2e write test data, so they have no default and need the fixture server's URL.
 - **Design system:** `node scripts/dev/design-system-check.mjs <baseUrl> [dir] [--mobile]` checks `/style` for contrast, focus, tap targets, reduced motion and the handle's keyboard control.
-- **Readiness:** `node scripts/dev/readiness.mjs <baseUrl> [dir]` arrives cold, like a reviewer: a fresh browser, no cookies, signed out, at 390px and 1440px.
+- **Readiness:** `node scripts/dev/readiness.mjs [baseUrl] [dir]` (the base URL defaults to https://docket-nahsan.vercel.app) arrives cold, like a reviewer: a fresh browser, no cookies, signed out, at 390px and 1440px.
   - It checks every page, a real 404, every old URL's redirect, no trace of the old identity, tap targets and 16px controls, the real allowance, and that browsing creates no session.
   - It checks the share previews of home, a published move and the longest-prompt library image (og:title, og:description, a 1200×630 og:image that loads, twitter:card), and that a long title is cut at a word.
-  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, at the final freeze) passed 76/76, with images left that day (78 on a day they've run out, when two more checks apply), alongside the home e2e (read-only, 38/38 at each width, measuring real playback) and the menu e2e's guest part (20/20 at each width).
+  - It makes nothing, so it's safe to point at production. The last run against production (2026-09-26, on https://docket-nahsan.vercel.app) passed 76/76, with images left that day (78 on a day they've run out, when two more checks apply), alongside the home e2e (read-only, 38/38 at each width, measuring real playback) and the menu e2e's guest part (20/20 at each width).
 
 ## How it was built
 

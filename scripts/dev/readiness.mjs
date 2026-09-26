@@ -4,14 +4,16 @@
 // titles or text, no horizontal overflow, tap targets, 16px controls on phones, images decode,
 // the old URLs redirect to real Docket pages, /make shows the real allowance (not test mode), and
 // browsing alone creates no session.
-// usage: node scripts/dev/readiness.mjs <baseUrl> [screenshotDir]
+// usage: node scripts/dev/readiness.mjs [baseUrl] [screenshotDir]   (baseUrl defaults to the live site)
 import puppeteer from "puppeteer-core";
 import { mkdirSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { LIVE_URL } from "./live-url.mjs";
 
 const CHROME = process.env.CHROME_PATH ?? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
-const [, , base, shotDir] = process.argv;
+const [, , baseArg, shotDir] = process.argv;
+const base = baseArg || LIVE_URL;
 const results = [];
 const check = (name, ok, info = "") => results.push(`${ok ? "PASS" : "FAIL"}  ${name}${info ? `  (${info})` : ""}`);
 if (shotDir) mkdirSync(shotDir, { recursive: true });
