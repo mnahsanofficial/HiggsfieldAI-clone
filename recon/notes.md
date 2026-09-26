@@ -305,13 +305,10 @@ Still missing. Anything here must be filled in later or flagged explicitly as an
 
 ---
 
-## 6. My reactions — TO FILL IN
+## 6. My reactions
 
-*(Nazmul: write this yourself before committing. It's where the one improvement over the
-original comes from, and it can't be reconstructed from screenshots.)*
-
-- What felt good:
-- What felt slow or annoying:
-- How many modals stood between signup and generating anything:
-- What I expected to find and couldn't:
-- The one thing I'd change:
+- **What felt good:** I liked the quality of the images and videos on Explore. Having many models to choose from seemed to be part of why.
+- **What felt slow or annoying:** I liked having many models, but the number of choices made it hard to know where to start.
+- **How the quiz and modals before my first generation felt:** It felt a bit long, because the offers and discounts felt like selling before I'd even tried the product.
+- **What I expected to find and couldn't:** I expected a way to try making something before signing up, and couldn't find it.
+- **The one thing I'd change:** If I could change one thing, I'd offer a free trial first, because once people have used the product, they'll understand what it does.
