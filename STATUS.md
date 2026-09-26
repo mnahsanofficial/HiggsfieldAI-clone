@@ -19,6 +19,10 @@
   - a stale sign-in reloads and asks again (local)
   - each sign-out asserts "Signing out…", the route and its 303, home, the cookie gone, "Sign in" without a refresh, and a reload staying signed out
   - the network-idle waits are replaced by element waits
+- **Verified on production at `2e83c12`, 390px and 1440px:**
+  - `ui-menu-e2e`: **23/23** at each width. The guest signs out as a stale tab; the registered part runs locally, at 30/30.
+  - readiness: **76/76**.
+- **Tabs opened before `2e83c12` still carry the old sign-out code.** Reload them once; from then on, a deploy can't break sign-out.
 
 **The domain move (2026-09-26):**
 - The app lives only at https://docket-nahsan.vercel.app. higgsfield-ai-clone.vercel.app was retired and returns 404.
