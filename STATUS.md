@@ -1,15 +1,21 @@
 # Status
 
-**Features are frozen as of 2026-09-26, after the owner's last pass.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
+**Features are frozen as of 2026-09-26.** From here on, only fixes for what's broken, copy corrections, and the submission itself. Anything new goes to the owner as a proposal first.
 
-**Waiting on the owner, not merged (as of 2026-09-26):**
+**Waiting on the owner:** only the two videos. Nothing else is open: no PRs, no drafts.
+- The walkthrough script is `docs/walkthrough.md`: 4:28, with beat 2 in the owner's final whys.
+- Record when `/make` shows free images left. They reset at 00:00 UTC.
+
+**Finished on 2026-09-26, after the owner's interview:**
 - **#40:** README, "What I changed from Higgsfield, and why".
-  - The owner reported filling in recon §6 and editing every why. Neither edit had reached GitHub or this checkout when I looked: the branch holds only my two commits, and `recon/notes.md` §6 is still "TO FILL IN".
-  - Once the edits are pushed, the steps are: remove the "(draft)" markers and the "Every why below is a draft" note (no other wording changes), then add "With a real budget, next" under the table.
-  - Those bullets are also still needed: the request contained its placeholder, not the bullets.
-  - Then merge.
-- **#47** (stacked on #40): "In 60 seconds" at the very top of the README. Line 5 ("How it's checked") is my addition, and easy to drop. It merges after #40.
-- **#44:** the walkthrough segment. Rebase on `main` after #40 and #47, then merge.
+  - The whys are the owner's own words, from the interview in the session log.
+  - Row 9 keeps the AI-video and studios bullets as drafted, by the owner's choice.
+  - Row 2's last column is "Taste." only.
+  - "With a real budget, next" holds the owner's three bullets.
+  - `recon/notes.md` §6 holds the owner's reactions.
+- **#50** (replaces #47, which GitHub closed when #40's branch was deleted): "In 60 seconds" at the very top of the README.
+- **#44:** the walkthrough's "What I changed from Higgsfield" beat, in the owner's final whys, retimed to end at 4:28.
+- **#49:** preview deployments are off (`vercel.json` deploys `main` only). Every preview had failed at the Neon integration's per-preview provisioning, before building. The README explains the red on older PRs.
 
 **The owner's last pass, done (2026-09-26):**
 - **#46:**
@@ -43,7 +49,7 @@
 - **`/credits`** shows plans that state their limits beside their credits, and the labelled demo checkout (`AHSAN345` takes 100% off).
 - **The account menu**, top right: who you are, balance, your log, sign out. A guest's sign-out warns first.
 
-**Last verification (2026-09-26, production at `67a2799`, 390px and 1440px):** readiness **78/78** (fresh browser, signed out); `ui-home-e2e` **38/38** at each width (read-only against the live allowance, 0 of 57 left; it measures real playback, reduced motion and the side-by-side hero); `ui-menu-e2e` **20/20** at each width at `311605f` (the guest part). Locally, on a fixture server: make 28, credits 22, home 39, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
+**Last verification (2026-09-26, production at `f3949e1`, 390px and 1440px):** readiness **76/76** (fresh browser, signed out). With images left today (57 of 57), the two out-of-images checks on `/make` don't apply; on a day they're gone it's 78. Earlier on 2026-09-26, at `67a2799`: `ui-home-e2e` **38/38** read-only at each width. At `311605f`: `ui-menu-e2e` **20/20** (the guest part). Locally, on a fixture server: make 28, credits 22, home 39, log 12 and menu 22, all passing at both widths; `verify-limits` 16, `verify-log` 21.
 
 **Owner to-dos, not blocking:**
 - The Vercel project and domain (`higgsfield-ai-clone.vercel.app`) still carry the old name; the GitHub repo is now `docket-nahsan`. The README's **Live:** link is the only domain serving Docket. If you submit a different domain, change that line.
